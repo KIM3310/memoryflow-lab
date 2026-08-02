@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 GIB = 1024**3
+
+
+def _stable_numbers(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 10)
+    if isinstance(value, dict):
+        return {key: _stable_numbers(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_stable_numbers(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -158,7 +168,7 @@ class SimulationResult:
     steps: tuple[StepMetrics, ...]
 
     def to_dict(self, include_steps: bool = True) -> dict[str, Any]:
-        payload = asdict(self)
+        payload = cast(dict[str, Any], _stable_numbers(asdict(self)))
         if not include_steps:
             payload.pop("steps")
         return payload

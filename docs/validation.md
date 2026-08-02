@@ -13,6 +13,8 @@
 9. The same scenario produces byte-for-byte stable JSON evidence.
 10. Bundled systems are labeled synthetic to block accidental product claims.
 
+Serialized evidence rounds floating-point metrics to ten decimal places so Python and operating-system differences below the reporting precision do not create false changes.
+
 ## Verification layers
 
 | Layer | Check |

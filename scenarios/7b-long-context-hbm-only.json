@@ -1,0 +1,33 @@
+{
+  "workload": {
+    "name": "7B GQA long-context decode",
+    "parameter_count_b": 7.0,
+    "layers": 32,
+    "hidden_size": 4096,
+    "attention_heads": 32,
+    "kv_heads": 8,
+    "head_dim": 128,
+    "weight_bits": 16,
+    "kv_bits": 16,
+    "context_tokens": 8192,
+    "generated_tokens": 64,
+    "concurrent_sequences": 16
+  },
+  "system": {
+    "name": "Synthetic accelerator A",
+    "hbm_capacity_gib": 24,
+    "hbm_bandwidth_gbps": 900,
+    "remote_capacity_gib": 256,
+    "remote_bandwidth_gbps": 64,
+    "remote_base_latency_us": 4,
+    "accelerator_tops": 120,
+    "near_memory_tops": 12
+  },
+  "policy": {
+    "name": "HBM only",
+    "kind": "hbm_only",
+    "hbm_window_tokens": 8192,
+    "transfer_overlap_ratio": 0.35,
+    "near_memory_reduction_ratio": 0.90
+  }
+}

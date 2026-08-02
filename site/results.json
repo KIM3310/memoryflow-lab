@@ -1,0 +1,124 @@
+{
+  "disclaimer": "Synthetic first-order estimates for architectural comparison; not measured vendor-product performance.",
+  "pareto_front": [
+    {
+      "assumptions": [
+        "Autoregressive decode is modeled as a synchronized batch of concurrent sequences.",
+        "Weights are read once per decode step and reused across the batch.",
+        "Latency is a first-order roofline estimate, not a product-performance claim.",
+        "Near-memory mode is a configurable proxy that reduces cold-KV transfer bytes.",
+        "All bundled hardware profiles are synthetic and intentionally avoid vendor specifications."
+      ],
+      "bottleneck": "remote_transfer",
+      "estimated_energy_j": 10.932214313779198,
+      "feasible": true,
+      "mean_decode_latency_ms": 33.09918453333333,
+      "p95_decode_latency_ms": 33.15988725333333,
+      "peak_hbm_kv_gib": 0.25,
+      "peak_remote_kv_gib": 15.873046875,
+      "policy_name": "near_memory-128",
+      "rejection_reason": null,
+      "system_name": "Synthetic accelerator A",
+      "throughput_tokens_s": 483.39559495451664,
+      "total_hbm_read_gib": 850.4650268554688,
+      "total_remote_read_gib": 101.19374999999998,
+      "workload_name": "7B GQA long-context decode"
+    }
+  ],
+  "results": [
+    {
+      "assumptions": [
+        "Autoregressive decode is modeled as a synchronized batch of concurrent sequences.",
+        "Weights are read once per decode step and reused across the batch.",
+        "Latency is a first-order roofline estimate, not a product-performance claim.",
+        "Near-memory mode is a configurable proxy that reduces cold-KV transfer bytes.",
+        "All bundled hardware profiles are synthetic and intentionally avoid vendor specifications."
+      ],
+      "bottleneck": "capacity",
+      "estimated_energy_j": 0.0,
+      "feasible": false,
+      "mean_decode_latency_ms": 0.0,
+      "p95_decode_latency_ms": 0.0,
+      "peak_hbm_kv_gib": 0.0,
+      "peak_remote_kv_gib": 0.0,
+      "policy_name": "HBM only",
+      "rejection_reason": "weights plus resident KV cache exceed HBM capacity",
+      "system_name": "Synthetic accelerator A",
+      "throughput_tokens_s": 0.0,
+      "total_hbm_read_gib": 0.0,
+      "total_remote_read_gib": 0.0,
+      "workload_name": "7B GQA long-context decode"
+    },
+    {
+      "assumptions": [
+        "Autoregressive decode is modeled as a synchronized batch of concurrent sequences.",
+        "Weights are read once per decode step and reused across the batch.",
+        "Latency is a first-order roofline estimate, not a product-performance claim.",
+        "Near-memory mode is a configurable proxy that reduces cold-KV transfer bytes.",
+        "All bundled hardware profiles are synthetic and intentionally avoid vendor specifications."
+      ],
+      "bottleneck": "remote_transfer",
+      "estimated_energy_j": 24.157660132147207,
+      "feasible": true,
+      "mean_decode_latency_ms": 171.2878388977778,
+      "p95_decode_latency_ms": 171.89486609777776,
+      "peak_hbm_kv_gib": 2.0,
+      "peak_remote_kv_gib": 14.123046875,
+      "policy_name": "CXL sliding window 1024",
+      "rejection_reason": null,
+      "system_name": "Synthetic accelerator A",
+      "throughput_tokens_s": 93.41001733081926,
+      "total_hbm_read_gib": 962.4650268554688,
+      "total_remote_read_gib": 899.9375,
+      "workload_name": "7B GQA long-context decode"
+    },
+    {
+      "assumptions": [
+        "Autoregressive decode is modeled as a synchronized batch of concurrent sequences.",
+        "Weights are read once per decode step and reused across the batch.",
+        "Latency is a first-order roofline estimate, not a product-performance claim.",
+        "Near-memory mode is a configurable proxy that reduces cold-KV transfer bytes.",
+        "All bundled hardware profiles are synthetic and intentionally avoid vendor specifications."
+      ],
+      "bottleneck": "remote_transfer",
+      "estimated_energy_j": 11.112602940211197,
+      "feasible": true,
+      "mean_decode_latency_ms": 33.27860753777777,
+      "p95_decode_latency_ms": 33.339310257777775,
+      "peak_hbm_kv_gib": 2.0,
+      "peak_remote_kv_gib": 14.123046875,
+      "policy_name": "Near-memory cold KV 1024",
+      "rejection_reason": null,
+      "system_name": "Synthetic accelerator A",
+      "throughput_tokens_s": 480.78934738591,
+      "total_hbm_read_gib": 962.4650268554688,
+      "total_remote_read_gib": 89.99374999999998,
+      "workload_name": "7B GQA long-context decode"
+    },
+    {
+      "assumptions": [
+        "Autoregressive decode is modeled as a synchronized batch of concurrent sequences.",
+        "Weights are read once per decode step and reused across the batch.",
+        "Latency is a first-order roofline estimate, not a product-performance claim.",
+        "Near-memory mode is a configurable proxy that reduces cold-KV transfer bytes.",
+        "All bundled hardware profiles are synthetic and intentionally avoid vendor specifications."
+      ],
+      "bottleneck": "near_memory_compute",
+      "estimated_energy_j": 11.112602940211197,
+      "feasible": true,
+      "mean_decode_latency_ms": 410.5038399217778,
+      "p95_decode_latency_ms": 412.05782955377776,
+      "peak_hbm_kv_gib": 2.0,
+      "peak_remote_kv_gib": 14.123046875,
+      "policy_name": "Near-memory stress 0.1 TOPS",
+      "rejection_reason": null,
+      "system_name": "Synthetic accelerator A - slow near-memory stress",
+      "throughput_tokens_s": 38.97649289480173,
+      "total_hbm_read_gib": 962.4650268554688,
+      "total_remote_read_gib": 89.99374999999998,
+      "workload_name": "7B GQA long-context decode"
+    }
+  ],
+  "scenario_sha256": "75e9365b297da4833adb072a79029a8c3244e58fb47f4463dbcc9a52449d0c33",
+  "schema_version": "1.0"
+}

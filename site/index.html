@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="MemoryFlow Lab compares LLM KV-cache placement policies across synthetic HBM and remote-memory systems."
+    />
+    <title>MemoryFlow Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">AI memory system co-design</p>
+        <h1>MemoryFlow Lab</h1>
+      </div>
+      <div class="status" aria-label="Model boundary">
+        <span class="status-dot"></span>
+        Synthetic first-order model
+      </div>
+    </header>
+
+    <main>
+      <section class="decision-band" aria-labelledby="decision-title">
+        <div class="decision-copy">
+          <p class="section-label">Decision under test</p>
+          <h2 id="decision-title">Where should long-context KV cache live?</h2>
+          <p>
+            Compare HBM-only placement, CXL-style tiering, and a near-memory proxy under the
+            same 7B GQA decode workload. Every result is generated from versioned inputs.
+          </p>
+        </div>
+        <dl class="workload-facts" id="workload-facts">
+          <div><dt>Context</dt><dd>8,192 tokens</dd></div>
+          <div><dt>Batch</dt><dd>16 sequences</dd></div>
+          <div><dt>Weights</dt><dd>FP16</dd></div>
+          <div><dt>KV cache</dt><dd>FP16 GQA</dd></div>
+        </dl>
+      </section>
+
+      <section class="metrics" aria-label="Selected policy metrics">
+        <article>
+          <span>Feasibility</span>
+          <strong id="metric-feasible">Loading</strong>
+          <small id="metric-reason">Checking capacity constraints</small>
+        </article>
+        <article>
+          <span>Mean decode</span>
+          <strong id="metric-latency">-</strong>
+          <small>milliseconds per decode step</small>
+        </article>
+        <article>
+          <span>Throughput</span>
+          <strong id="metric-throughput">-</strong>
+          <small>batched tokens per second</small>
+        </article>
+        <article>
+          <span>Remote traffic</span>
+          <strong id="metric-traffic">-</strong>
+          <small>GiB across the generated sequence</small>
+        </article>
+      </section>
+
+      <section class="analysis-grid">
+        <div class="policy-panel">
+          <div class="section-heading">
+            <div>
+              <p class="section-label">Policy comparison</p>
+              <h2>Three hypotheses, one falsification</h2>
+            </div>
+            <div class="segmented" id="policy-selector" role="tablist" aria-label="Placement policy"></div>
+          </div>
+          <div class="chart" id="comparison-chart" aria-label="Policy metric comparison"></div>
+        </div>
+
+        <aside class="verdict" aria-labelledby="verdict-title">
+          <p class="section-label">Engineering verdict</p>
+          <h2 id="verdict-title">Capacity first, then movement</h2>
+          <ol>
+            <li><strong>Reject</strong> any layout that cannot fit weights plus resident KV.</li>
+            <li><strong>Measure</strong> exposed remote transfer after overlap, not bandwidth alone.</li>
+            <li><strong>Offload selectively</strong> only when reduced movement beats added complexity.</li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="evidence" aria-labelledby="evidence-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">Reproducible evidence</p>
+            <h2 id="evidence-title">Inputs, assumptions, and failure states stay visible</h2>
+          </div>
+          <a href="https://github.com/KIM3310/memoryflow-lab" class="repo-link">Inspect repository</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Policy</th>
+                <th>Feasible</th>
+                <th>Mean decode</th>
+                <th>Throughput</th>
+                <th>Remote read</th>
+                <th>Bottleneck</th>
+              </tr>
+            </thead>
+            <tbody id="results-table"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer" id="disclaimer"></p>
+      </section>
+    </main>
+
+    <footer>
+      <span>Doeon Kim · MemoryFlow Lab</span>
+      <span id="scenario-hash">Evidence hash loading</span>
+    </footer>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

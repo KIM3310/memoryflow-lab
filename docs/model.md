@@ -56,6 +56,8 @@ latency_ms = local_floor_ms + remote_ms * (1 - overlap_ratio)
 
 The use of `max` expresses overlap between local compute and HBM movement. Remote overlap is exposed as a separate, configurable assumption.
 
+`p95_step_latency_ms` is the 95th percentile across generated token steps in one deterministic run. It is not a production tail-latency measurement across repeated requests.
+
 ### Near-memory proxy
 
 ```text

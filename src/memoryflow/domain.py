@@ -156,7 +156,7 @@ class SimulationResult:
     feasible: bool
     rejection_reason: str | None
     mean_decode_latency_ms: float
-    p95_decode_latency_ms: float
+    p95_step_latency_ms: float
     throughput_tokens_s: float
     total_hbm_read_gib: float
     total_remote_read_gib: float

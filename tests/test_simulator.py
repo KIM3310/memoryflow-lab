@@ -105,7 +105,7 @@ def test_remote_capacity_overflow_is_reported() -> None:
 def test_result_summary_is_consistent() -> None:
     result = simulate(request("near_memory"))
     summary = result.to_dict(include_steps=False)
-    assert result.p95_decode_latency_ms >= result.mean_decode_latency_ms
+    assert result.p95_step_latency_ms >= result.mean_decode_latency_ms
     assert result.estimated_energy_j > 0
     assert result.total_hbm_read_gib > 0
     assert result.assumptions == ASSUMPTIONS

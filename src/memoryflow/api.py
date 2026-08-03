@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,18 @@ from memoryflow.io import request_from_dict
 from memoryflow.simulator import simulate
 
 ROOT = Path(__file__).resolve().parents[2]
-SITE = ROOT / "site"
+
+
+def resolve_site_directory() -> Path:
+    configured = os.environ.get("MEMORYFLOW_SITE_DIR")
+    site = Path(configured).expanduser() if configured else ROOT / "site"
+    resolved = site.resolve()
+    if not resolved.is_dir():
+        raise RuntimeError(f"MemoryFlow dashboard directory does not exist: {resolved}")
+    return resolved
+
+
+SITE = resolve_site_directory()
 
 app = FastAPI(
     title="MemoryFlow Lab",

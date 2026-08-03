@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 
-from memoryflow.api import app
+from memoryflow.api import app, resolve_site_directory
 from memoryflow.cli import main
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +37,11 @@ def test_dashboard_is_served() -> None:
     response = TestClient(app).get("/")
     assert response.status_code == 200
     assert "MemoryFlow Lab" in response.text
+
+
+def test_dashboard_directory_can_be_configured(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("MEMORYFLOW_SITE_DIR", str(tmp_path))
+    assert resolve_site_directory() == tmp_path.resolve()
 
 
 def test_cli_simulate_writes_summary(tmp_path: Path) -> None:

@@ -1,6 +1,19 @@
+name: memoryflow-lab
+
 services:
   memoryflow:
-    build: .
+    image: memoryflow-lab:local
+    build:
+      context: .
+      target: runtime
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${MEMORYFLOW_PORT:-8000}:8000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped

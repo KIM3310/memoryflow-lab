@@ -85,6 +85,24 @@ Sweep placement windows and inspect the Pareto front:
 .venv/bin/memoryflow optimize scenarios/7b-long-context-tiered.json
 ```
 
+### Reproducible container
+
+```bash
+make docker-verify
+```
+
+This builds the production image, starts it with a read-only filesystem and all Linux capabilities removed, waits for the image health check, and submits the bundled tiered-memory scenario to the live API. The container runs as UID `10001`, not root.
+
+For an interactive local service:
+
+```bash
+make docker-up
+# http://127.0.0.1:8000
+make docker-down
+```
+
+See [`docs/container.md`](docs/container.md) for the runtime boundary and verification contract.
+
 ## Repository map
 
 | Path | Purpose |
@@ -94,6 +112,8 @@ Sweep placement windows and inspect the Pareto front:
 | `src/memoryflow/optimizer.py` | HBM-window sweep and latency/energy Pareto filtering |
 | `scenarios/` | versioned synthetic experiment inputs |
 | `tests/` | equations, monotonic properties, failure states, API, CLI, and reproducibility |
+| `Dockerfile` | multi-stage, non-root production image with an application health check |
+| `scripts/smoke_container.sh` | live container, security-boundary, dashboard, and simulation smoke test |
 | `evidence/` | regenerated benchmark decision record |
 | `site/` | static recruiter/reviewer surface generated from the same evidence |
 | `docs/` | architecture, model, validation, experiment log, and interview defense |

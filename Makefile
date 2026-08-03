@@ -2,7 +2,7 @@ PYTHON ?= python3
 VENV ?= .venv
 BIN := $(VENV)/bin
 
-.PHONY: install test lint typecheck verify benchmark run
+.PHONY: install test lint typecheck verify benchmark run docker-build docker-verify docker-up docker-down verify-all
 
 install:
 	$(PYTHON) -m venv $(VENV)
@@ -21,6 +21,8 @@ typecheck:
 
 verify: lint typecheck test benchmark
 
+verify-all: verify docker-verify
+
 benchmark:
 	$(BIN)/python -m scripts.build_evidence
 	git diff --exit-code -- site/results.json evidence/benchmark-summary.md
@@ -28,3 +30,14 @@ benchmark:
 run:
 	$(BIN)/uvicorn memoryflow.api:app --reload
 
+docker-build:
+	docker build --tag memoryflow-lab:local .
+
+docker-verify:
+	bash scripts/smoke_container.sh
+
+docker-up:
+	docker compose up --build --detach --wait
+
+docker-down:
+	docker compose down --remove-orphans

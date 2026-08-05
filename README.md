@@ -1,69 +1,22 @@
 # MemoryFlow Lab
 
 [![CI](https://github.com/KIM3310/memoryflow-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/KIM3310/memoryflow-lab/actions/workflows/ci.yml)
-[![Live evidence](https://img.shields.io/badge/live-evidence-0d6447)](https://kim3310.github.io/memoryflow-lab/)
+[![Live results](https://img.shields.io/badge/live-results-0d6447)](https://kim3310.github.io/memoryflow-lab/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab)](https://www.python.org/)
 
-A reproducible co-design lab for one concrete question:
+MemoryFlow is a first-order model for one question:
 
-> When HBM cannot hold an LLM's weights and long-context KV cache, when does tiering KV to remote memory help, and when does data movement erase the gain?
+> When model weights and a long-context KV cache do not fit in HBM, which placement policies remain feasible, and when does remote data movement dominate decode latency?
 
-MemoryFlow models autoregressive decode across three placement policies: HBM-only, a hot-window plus remote-memory tier, and a near-memory proxy that reduces cold-KV transfer. It reports feasibility, latency floors, throughput, traffic, capacity, energy proxies, and bottlenecks from versioned synthetic inputs.
+It compares three policies under versioned synthetic inputs:
 
-**This is an educational first-order model, not a claim about any SK hynix or vendor product.** Hardware profiles are synthetic by design.
+- HBM-only placement;
+- a hot HBM window with a remote cold tier;
+- a near-memory proxy that reduces cold-KV transfer but adds remote compute.
 
-## Three-minute evaluation
+The simulator reports capacity failures, per-step latency components, throughput, traffic, energy proxies, and bottlenecks. It is not cycle-accurate and does not model a named product.
 
-1. Open the [live evidence dashboard](https://kim3310.github.io/memoryflow-lab/).
-2. Read the three hypotheses in [`docs/experiment-log.md`](docs/experiment-log.md).
-3. Inspect the equations and limits in [`docs/model.md`](docs/model.md).
-4. Run `make verify` to reproduce the checked-in evidence.
-5. Change CXL bandwidth or the HBM window in a scenario and see whether the conclusion survives.
-
-## Why this project exists
-
-SK hynix describes Software Solution work as analyzing AI-model behavior, designing KV-cache storage and data-movement paths, and simulating how new memory technology affects AI performance. Its 2026 hiring process also replaces the conventional essay with AI-usage and semiconductor-job evidence, followed by a half-day deep interview focused on applied AI, domain expertise, and fundamental reasoning.
-
-This project is deliberately shaped as inspectable interview evidence:
-
-| Hiring signal | Repository evidence |
-|---|---|
-| AI workload understanding | GQA-aware KV sizing and prefill/decode separation boundary |
-| Memory architecture | HBM capacity, bandwidth, remote tier, movement, and near-memory trade-offs |
-| Fundamental reasoning | explicit hypotheses, equations, rejected configuration, sensitivity sweep |
-| AI-assisted engineering | documented human decisions and machine-assisted implementation boundary |
-| Communication | concise dashboard, model notes, limitations, and Korean interview guide |
-
-Official role and hiring references: [System Architecture & Software Solution](https://news.skhynix.co.kr/ambassador-job-report-ep3/), [2026 half-day deep interview](https://news.skhynix.co.kr/ai-talent-recruit-2026-02/).
-
-## Baseline finding
-
-The bundled case uses a synthetic 24 GiB HBM accelerator, a 7B FP16 GQA model, 8,192-token context, and 16 concurrent sequences.
-
-- **HBM-only:** rejected because weights plus full KV exceed capacity.
-- **Naive tiering:** feasible, but cold-KV transfer becomes the dominant cost.
-- **Near-memory proxy:** feasible and transfers less cold-KV data in this scenario.
-- **Slow near-memory stress:** reverses the win when remote compute cannot keep up.
-
-The third result is not universal. The decision changes with model precision, batch size, context length, HBM window, remote bandwidth, overlap, and the assumed reduction ratio. That conditionality is the point of the lab.
-
-## Architecture
-
-```text
-Versioned scenario JSON
-        |
-        v
-Workload model -> capacity gate -> token-step simulator -> metrics
-                                             |
-                                             +-> policy sweep / Pareto filter
-                                             +-> CLI JSON evidence
-                                             +-> FastAPI
-                                             +-> static review dashboard
-```
-
-The numerical core is dependency-light Python. FastAPI is only an adapter; the simulator can run from tests or the CLI without a server.
-
-## Quick start
+## Reproduce
 
 ```bash
 make install
@@ -71,7 +24,93 @@ make verify
 make run
 ```
 
-Then open `http://127.0.0.1:8000` or the API docs at `http://127.0.0.1:8000/docs`.
+Open `http://127.0.0.1:8000`, or inspect the generated files directly:
+
+- [`evidence/benchmark-summary.md`](evidence/benchmark-summary.md)
+- [`evidence/measurement-summary.md`](evidence/measurement-summary.md)
+- [`site/results.json`](site/results.json)
+
+`make verify` runs formatting, static analysis, unit/property tests, scenario regeneration, and measurement-data validation.
+
+## Analytical model
+
+```text
+scenario JSON
+      |
+      v
+workload + memory system + placement policy
+      |
+      +--> weight/KV capacity gates
+      +--> decode FLOPs and HBM traffic
+      +--> remote transfer and near-memory service
+      +--> compute/memory overlap
+      |
+      v
+latency + throughput + traffic + energy proxy + bottleneck
+```
+
+The main equations and omissions are defined in [`docs/model.md`](docs/model.md). Key properties are tested rather than inferred from fixed examples: increasing remote bandwidth or overlap cannot increase modeled tiering latency, increasing the HBM window reduces remote traffic, and insufficient near-memory throughput can reverse the selected policy.
+
+## PyTorch GPU validation
+
+Two measurements test different parts of the analytical model. Both use disjoint calibration and validation inputs.
+
+### Decode attention
+
+The main measurement runs PyTorch `scaled_dot_product_attention` with one query token and preallocated KV tensors. The committed Apple M4 MPS run uses batch 1, 8 heads, head dimension 64, and FP16.
+
+- Calibration contexts: 256, 1,024, and 4,096 tokens
+- Validation contexts: 512, 2,048, and 8,192 tokens
+- Timing: 15 warmups and 60 synchronized measurements per context
+
+| Analytical model | Held-out MAPE | Maximum error |
+|---|---:|---:|
+| Independent copy/GEMM roofline | 37.46% | 51.30% |
+| Attention-calibrated affine model | 4.72% | 9.66% |
+
+The first model uses separately measured copy bandwidth, fixed latency, and GEMM throughput. Its error shows that independent peak-style microbenchmarks do not directly predict a fused attention kernel. Fitting only the calibration contexts reduces the error on the three unseen context lengths.
+
+### Device-copy support measurement
+
+The second measurement checks the remote-transfer equation shape:
+
+```text
+transfer_ms = base_latency_us / 1000 + bytes / bandwidth
+```
+
+| Transfer model | Held-out MAPE | Maximum error |
+|---|---:|---:|
+| `bytes / bandwidth` | 53.21% | 90.62% |
+| `base latency + bytes / bandwidth` | 8.52% | 17.12% |
+
+Raw samples, environment metadata, fitted parameters, and per-point prediction errors are committed in:
+
+- [`evidence/measurements/apple-m4-mps-attention.json`](evidence/measurements/apple-m4-mps-attention.json)
+- [`evidence/measurements/apple-m4-mps-copy.json`](evidence/measurements/apple-m4-mps-copy.json)
+
+All derived metrics are recomputed from the raw samples during `make verify`.
+
+To repeat both measurements on a CUDA or MPS device:
+
+```bash
+make install-measure
+make measure
+```
+
+Local runs write ignored `local-*.json` files and cannot overwrite committed references accidentally. Both scripts accept an explicit device label, output path, warmup count, repeat count, and calibration/validation sets.
+
+## Scenario results
+
+The bundled case uses a synthetic 24 GiB accelerator profile, a 7B FP16 GQA workload, an 8,192-token context, and 16 concurrent sequences.
+
+- HBM-only is rejected because weights plus the full KV cache exceed capacity.
+- Windowed tiering restores capacity but exposes remote-transfer latency.
+- The near-memory proxy reduces transfer in the base scenario.
+- Reducing only near-memory throughput reverses that result.
+
+These results are conditional on model precision, batch size, context length, HBM window, bandwidth, overlap, and the proxy reduction ratio.
+
+## CLI
 
 Run one scenario:
 
@@ -79,55 +118,43 @@ Run one scenario:
 .venv/bin/memoryflow simulate scenarios/7b-long-context-tiered.json --steps
 ```
 
-Sweep placement windows and inspect the Pareto front:
+Sweep HBM windows and emit the latency-energy Pareto front:
 
 ```bash
 .venv/bin/memoryflow optimize scenarios/7b-long-context-tiered.json
 ```
 
-### Reproducible container
+## Container
 
 ```bash
 make docker-verify
 ```
 
-This builds the production image, starts it with a read-only filesystem and all Linux capabilities removed, waits for the image health check, and submits the bundled tiered-memory scenario to the live API. The container runs as UID `10001`, not root.
-
-For an interactive local service:
-
-```bash
-make docker-up
-# http://127.0.0.1:8000
-make docker-down
-```
-
-See [`docs/container.md`](docs/container.md) for the runtime boundary and verification contract.
+The production image runs as UID `10001`, uses a read-only filesystem during the smoke test, drops Linux capabilities, and verifies the live API and static dashboard. See [`docs/container.md`](docs/container.md).
 
 ## Repository map
 
 | Path | Purpose |
 |---|---|
-| `src/memoryflow/domain.py` | validated workload, memory-system, policy, and result contracts |
-| `src/memoryflow/simulator.py` | capacity gate, token-step roofline model, traffic and energy accounting |
-| `src/memoryflow/optimizer.py` | HBM-window sweep and latency/energy Pareto filtering |
+| `src/memoryflow/domain.py` | workload, memory-system, policy, and result contracts |
+| `src/memoryflow/simulator.py` | capacity gates, token-step latency, traffic, and energy accounting |
+| `src/memoryflow/optimizer.py` | HBM-window sweep and Pareto filtering |
+| `src/memoryflow/measurement.py` | transfer and attention model fitting with held-out comparison |
+| `scripts/measure_torch.py` | synchronized PyTorch GPU copy measurement |
+| `scripts/measure_attention.py` | synchronized PyTorch SDPA/KV attention measurement |
 | `scenarios/` | versioned synthetic experiment inputs |
-| `tests/` | equations, monotonic properties, failure states, API, CLI, and reproducibility |
-| `Dockerfile` | multi-stage, non-root production image with an application health check |
-| `scripts/smoke_container.sh` | live container, security-boundary, dashboard, and simulation smoke test |
-| `evidence/` | regenerated benchmark decision record |
-| `site/` | static recruiter/reviewer surface generated from the same evidence |
-| `docs/` | architecture, model, validation, experiment log, and interview defense |
+| `evidence/` | generated scenario summaries and committed raw measurements |
+| `tests/` | equations, properties, failure states, interfaces, and measurement fitting |
+| `site/` | static results dashboard generated from the same inputs |
 
-## Evidence boundary
+## Limits
 
-- No proprietary fab, customer, model-serving, or product data is used.
-- Results are analytical estimates, not cycle-accurate simulation or hardware measurements.
-- `near_memory` is a parameterized reduction proxy, not an AiM/AiMX implementation.
-- A production claim would require traces, hardware counters, calibrated transfer overlap, and validation against a trusted simulator or platform.
-
-## Background bridge
-
-The repository turns material from the **AI Semiconductor Architecture Design and Performance Optimization** course (Seoul ICT Innovation Square / KAIT, July 2026) into a falsifiable software artifact. The course is context; the equations, tests, decisions, and limitations are the evidence.
+- Synthetic scenarios are analytical estimates, not measured product performance.
+- The measured attention path is one fused layer with preallocated KV, not end-to-end decoding.
+- Apple unified memory and MPS are not substitutes for HBM, CXL, or a CUDA server.
+- The near-memory policy is a parameterized proxy, not an implementation.
+- Kernel launch, paging, bank conflicts, compiler lowering, synchronization topology, power states, and thermal effects are outside the simulator.
+- End-to-end validation requires framework traces, hardware counters, and a trusted memory simulator or server platform.
 
 ## License
 

@@ -35,4 +35,5 @@ MemoryFlow's container is a reproducible review surface for the analytical model
 
 The local Apple Silicon run validates `linux/arm64`. GitHub Actions repeats the same contract on an `amd64` Linux runner.
 
-The release candidate is also checked with Dockerfile build checks and Docker Scout. At the time of the recorded verification, the runtime image contained no critical, high, medium, or low package vulnerabilities; future builds must be scanned again because vulnerability databases change.
+Vulnerability findings are time-dependent and are not stored as a permanent repository claim.
+Re-scan the built image when making a release decision.

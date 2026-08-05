@@ -1,13 +1,13 @@
 # Reproducible Benchmark Summary
 
-Scenario input SHA-256: `75e9365b297da4833adb072a79029a8c3244e58fb47f4463dbcc9a52449d0c33`
+Scenario input SHA-256: `f310b369a41c8b213cef0284bfa1bd409970585e79ecd190131f4700347d0723`
 
 These are synthetic first-order estimates for architecture comparison, not measured product claims.
 
 | Policy | Feasible | Mean decode (ms) | Throughput (token/s) | Remote read (GiB) | Bottleneck |
 |---|---:|---:|---:|---:|---|
 | HBM only | no | 0.00 | 0.00 | 0.00 | capacity |
-| CXL sliding window 1024 | yes | 171.29 | 93.41 | 899.94 | remote_transfer |
+| Remote sliding window 1024 | yes | 171.29 | 93.41 | 899.94 | remote_transfer |
 | Near-memory cold KV 1024 | yes | 33.28 | 480.79 | 89.99 | remote_transfer |
 | Near-memory stress 0.1 TOPS | yes | 410.50 | 38.98 | 89.99 | near_memory_compute |
 

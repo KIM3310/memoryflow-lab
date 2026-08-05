@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memoryflow-lab"
-version = "0.1.0"
+version = "0.2.0"
 description = "A reproducible LLM KV-cache memory co-design simulator"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,10 @@ dev = [
   "pytest>=8.3,<9",
   "pytest-cov>=5,<6",
   "ruff>=0.9,<1",
+]
+measure = [
+  "numpy>=2,<3",
+  "torch>=2.8,<3",
 ]
 
 [project.scripts]

@@ -58,6 +58,32 @@ The use of `max` expresses overlap between local compute and HBM movement. Remot
 
 `p95_step_latency_ms` is the 95th percentile across generated token steps in one deterministic run. It is not a production tail-latency measurement across repeated requests.
 
+### Measured attention check
+
+For one decode query token, the SDPA measurement uses:
+
+```text
+attention_flops = 4 * batch * heads * head_dim * context_tokens
+modeled_bytes = (K + V + query + output) * dtype_bytes
+roofline_ms = base_latency + max(flops / measured_tops, bytes / measured_bandwidth)
+```
+
+`scripts/measure_attention.py` obtains compute throughput from a separate GEMM and transfer parameters from a separate device-copy sweep. On held-out context lengths, this independent roofline had 37.46% MAPE. An attention-specific affine model fitted only on the calibration contexts reduced held-out MAPE to 4.72%.
+
+The comparison demonstrates that independent microbenchmark ceilings do not directly predict a fused kernel. The attention-specific slope is an effective stream rate that combines kernel implementation, memory access, softmax, dispatch, and synchronization; it is not physical DRAM bandwidth.
+
+### Measured transfer-equation check
+
+The remote path includes a fixed service term:
+
+```text
+transfer_ms = base_latency_us / 1000 + bytes / bandwidth
+```
+
+`scripts/measure_torch.py` checks the shape of this equation with synchronized PyTorch GPU copies. Calibration and validation sizes are disjoint. The committed Apple M4 MPS run reduced held-out MAPE from 53.21% for a bandwidth-only equation to 8.52% when a fitted fixed-latency term was included.
+
+This is an equation-shape validation, not a calibration of the bundled synthetic HBM or remote-memory profile. Apple unified memory, host synchronization, MPS dispatch, and `copy_` semantics differ from HBM and CXL systems.
+
 ### Near-memory proxy
 
 ```text

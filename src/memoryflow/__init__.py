@@ -2,4 +2,6 @@
 
 from memoryflow.simulator import simulate
 
-__all__ = ["simulate"]
+__version__ = "0.2.0"
+
+__all__ = ["__version__", "simulate"]

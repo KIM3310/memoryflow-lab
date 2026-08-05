@@ -70,6 +70,16 @@ def test_workload_rejects_more_kv_heads_than_attention_heads() -> None:
         sample_workload(kv_heads=64).validate()
 
 
+def test_workload_rejects_non_divisible_gqa_heads() -> None:
+    with pytest.raises(ValueError, match="divisible"):
+        sample_workload(kv_heads=7).validate()
+
+
+def test_workload_rejects_inconsistent_hidden_size() -> None:
+    with pytest.raises(ValueError, match=r"attention_heads \* head_dim"):
+        sample_workload(hidden_size=4095).validate()
+
+
 def test_workload_rejects_unknown_precision() -> None:
     with pytest.raises(ValueError, match="must be one of"):
         sample_workload(kv_bits=3).validate()

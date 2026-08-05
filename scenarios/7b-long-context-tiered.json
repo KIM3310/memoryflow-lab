@@ -24,7 +24,7 @@
     "near_memory_tops": 12
   },
   "policy": {
-    "name": "CXL sliding window 1024",
+    "name": "Remote sliding window 1024",
     "kind": "sliding_window",
     "hbm_window_tokens": 1024,
     "transfer_overlap_ratio": 0.35,

@@ -50,6 +50,10 @@ class Workload:
             raise ValueError(f"workload values must be positive: {', '.join(invalid)}")
         if self.kv_heads > self.attention_heads:
             raise ValueError("kv_heads cannot exceed attention_heads")
+        if self.attention_heads % self.kv_heads != 0:
+            raise ValueError("attention_heads must be divisible by kv_heads")
+        if self.attention_heads * self.head_dim != self.hidden_size:
+            raise ValueError("attention_heads * head_dim must equal hidden_size")
         if self.weight_bits not in {4, 8, 16, 32} or self.kv_bits not in {4, 8, 16, 32}:
             raise ValueError("weight_bits and kv_bits must be one of 4, 8, 16, 32")
 

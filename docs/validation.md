@@ -16,6 +16,7 @@
 12. Stored error metrics are recomputed from raw measurement samples during verification.
 13. Attention calibration contexts are disjoint from validation contexts.
 14. Copy bandwidth, GEMM throughput, modeled FLOPs, and attention errors are recomputed.
+15. GQA head counts must divide cleanly and agree with hidden size before simulation.
 
 Serialized evidence rounds floating-point metrics to ten decimal places so Python and operating-system differences below the reporting precision do not create false changes.
 

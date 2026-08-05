@@ -24,6 +24,9 @@ kv_bytes_per_token_per_sequence
 ```
 
 The factor `2` represents key and value. Using `kv_heads` rather than all attention heads is essential for GQA/MQA.
+The workload contract also requires `attention_heads` to be divisible by `kv_heads` and
+`attention_heads * head_dim` to equal `hidden_size`; inconsistent tensor shapes are rejected
+before simulation.
 
 ### Capacity gate
 

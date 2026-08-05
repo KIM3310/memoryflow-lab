@@ -407,7 +407,7 @@
       "p95_step_latency_ms": 171.8948660978,
       "peak_hbm_kv_gib": 2.0,
       "peak_remote_kv_gib": 14.123046875,
-      "policy_name": "CXL sliding window 1024",
+      "policy_name": "Remote sliding window 1024",
       "rejection_reason": null,
       "system_name": "Synthetic accelerator A",
       "throughput_tokens_s": 93.4100173308,
@@ -462,6 +462,6 @@
       "workload_name": "7B GQA long-context decode"
     }
   ],
-  "scenario_sha256": "75e9365b297da4833adb072a79029a8c3244e58fb47f4463dbcc9a52449d0c33",
+  "scenario_sha256": "f310b369a41c8b213cef0284bfa1bd409970585e79ecd190131f4700347d0723",
   "schema_version": "1.0"
 }

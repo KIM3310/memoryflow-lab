@@ -37,6 +37,71 @@ const renderSelected = (result, allResults) => {
   `).join("");
 };
 
+const renderCopyMeasurement = (measurement) => {
+  const baseline = measurement.models.bandwidth_only;
+  const affine = measurement.models.affine;
+  const baselinePoints = new Map(
+    baseline.validation.points.map((point) => [point.size_bytes, point]),
+  );
+
+  document.querySelector("#copy-baseline-mape").textContent =
+    `${fmt(baseline.validation.mean_absolute_percentage_error_pct)}%`;
+  document.querySelector("#copy-affine-mape").textContent =
+    `${fmt(affine.validation.mean_absolute_percentage_error_pct)}%`;
+  document.querySelector("#copy-bandwidth").textContent =
+    `${fmt(affine.bandwidth_gbps)} GB/s`;
+  document.querySelector("#copy-base-latency").textContent =
+    `${fmt(affine.base_latency_us)} µs`;
+  document.querySelector("#copy-table").innerHTML = affine.validation.points.map((point) => {
+    const baselinePoint = baselinePoints.get(point.size_bytes);
+    return `
+      <tr>
+        <td>${fmt(point.size_bytes / (1024 ** 2), 0)} MiB</td>
+        <td>${fmt(point.measured_ms, 4)} ms</td>
+        <td>${fmt(baselinePoint.predicted_ms, 4)} ms</td>
+        <td>${fmt(point.predicted_ms, 4)} ms</td>
+        <td>${fmt(point.absolute_percentage_error_pct)}%</td>
+      </tr>
+    `;
+  }).join("");
+  document.querySelector("#copy-boundary").textContent =
+    `${measurement.scope.measured}. Not measured: ${measurement.scope.not_measured}.`;
+};
+
+const renderAttentionMeasurement = (measurement) => {
+  const environment = measurement.environment;
+  const roofline = measurement.models.independent_roofline;
+  const calibrated = measurement.models.attention_affine;
+  const rooflinePoints = new Map(
+    roofline.validation.points.map((point) => [point.context_tokens, point]),
+  );
+
+  document.querySelector("#measurement-device").textContent =
+    `${environment.device_label} · ${environment.device_backend.toUpperCase()} · PyTorch ${environment.torch_version}`;
+  document.querySelector("#attention-roofline-mape").textContent =
+    `${fmt(roofline.validation.mean_absolute_percentage_error_pct)}%`;
+  document.querySelector("#attention-affine-mape").textContent =
+    `${fmt(calibrated.validation.mean_absolute_percentage_error_pct)}%`;
+  document.querySelector("#attention-max-error").textContent =
+    `${fmt(calibrated.validation.max_absolute_percentage_error_pct)}%`;
+  document.querySelector("#attention-effective-rate").textContent =
+    `${fmt(calibrated.effective_stream_gbps)} GB/s`;
+  document.querySelector("#attention-table").innerHTML = calibrated.validation.points.map((point) => {
+    const rooflinePoint = rooflinePoints.get(point.context_tokens);
+    return `
+      <tr>
+        <td>${fmt(point.context_tokens, 0)} tokens</td>
+        <td>${fmt(point.measured_ms, 4)} ms</td>
+        <td>${fmt(rooflinePoint.predicted_ms, 4)} ms</td>
+        <td>${fmt(point.predicted_ms, 4)} ms</td>
+        <td>${fmt(point.absolute_percentage_error_pct)}%</td>
+      </tr>
+    `;
+  }).join("");
+  document.querySelector("#attention-boundary").textContent =
+    `${measurement.scope.measured}. Not measured: ${measurement.scope.not_measured}.`;
+};
+
 const render = (payload) => {
   const results = payload.results;
   const selector = document.querySelector("#policy-selector");
@@ -63,6 +128,8 @@ const render = (payload) => {
   `).join("");
   document.querySelector("#disclaimer").textContent = payload.disclaimer;
   document.querySelector("#scenario-hash").textContent = `Scenario ${payload.scenario_sha256.slice(0, 12)}`;
+  renderAttentionMeasurement(payload.attention_measurement);
+  renderCopyMeasurement(payload.measurement);
   renderSelected(results[1], results);
 };
 

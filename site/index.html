@@ -18,7 +18,7 @@
       </div>
       <div class="status" aria-label="Model boundary">
         <span class="status-dot"></span>
-        Synthetic first-order model
+        Synthetic model + measured equation check
       </div>
     </header>
 
@@ -28,7 +28,7 @@
           <p class="section-label">Decision under test</p>
           <h2 id="decision-title">Where should long-context KV cache live?</h2>
           <p>
-            Compare HBM-only placement, CXL-style tiering, and a near-memory proxy under the
+            Compare HBM-only placement, remote-memory tiering, and a near-memory proxy under the
             same 7B GQA decode workload. Every result is generated from versioned inputs.
           </p>
         </div>
@@ -76,7 +76,7 @@
         </div>
 
         <aside class="verdict" aria-labelledby="verdict-title">
-          <p class="section-label">Engineering verdict</p>
+          <p class="section-label">Model result</p>
           <h2 id="verdict-title">Capacity first, then movement</h2>
           <ol>
             <li><strong>Reject</strong> any layout that cannot fit weights plus resident KV.</li>
@@ -86,13 +86,102 @@
         </aside>
       </section>
 
+      <section class="measurement" aria-labelledby="measurement-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">PyTorch GPU measurement</p>
+            <h2 id="measurement-title">Decode attention: roofline vs kernel calibration</h2>
+          </div>
+          <span class="measurement-device" id="measurement-device">Loading device metadata</span>
+        </div>
+        <div class="measurement-metrics">
+          <article>
+            <span>Independent roofline MAPE</span>
+            <strong id="attention-roofline-mape">-</strong>
+            <small>copy + GEMM calibration</small>
+          </article>
+          <article>
+            <span>Attention-calibrated MAPE</span>
+            <strong id="attention-affine-mape">-</strong>
+            <small>held-out context lengths</small>
+          </article>
+          <article>
+            <span>Maximum validation error</span>
+            <strong id="attention-max-error">-</strong>
+            <small>calibrated model</small>
+          </article>
+          <article>
+            <span>Effective stream rate</span>
+            <strong id="attention-effective-rate">-</strong>
+            <small>kernel-specific fit</small>
+          </article>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Validation context</th>
+                <th>Measured</th>
+                <th>Independent roofline</th>
+                <th>Attention-calibrated</th>
+                <th>Calibrated error</th>
+              </tr>
+            </thead>
+            <tbody id="attention-table"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer" id="attention-boundary"></p>
+
+        <div class="measurement-subheading">
+          <p class="section-label">Supporting calibration</p>
+          <h3>Device-copy transfer equation</h3>
+        </div>
+        <div class="measurement-metrics">
+          <article>
+            <span>Bandwidth-only MAPE</span>
+            <strong id="copy-baseline-mape">-</strong>
+            <small>held-out sizes</small>
+          </article>
+          <article>
+            <span>Affine MAPE</span>
+            <strong id="copy-affine-mape">-</strong>
+            <small>base latency + bytes / bandwidth</small>
+          </article>
+          <article>
+            <span>Fitted bandwidth</span>
+            <strong id="copy-bandwidth">-</strong>
+            <small>decimal GB/s</small>
+          </article>
+          <article>
+            <span>Fitted base latency</span>
+            <strong id="copy-base-latency">-</strong>
+            <small>microseconds</small>
+          </article>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Validation size</th>
+                <th>Measured</th>
+                <th>Bandwidth-only</th>
+                <th>Affine</th>
+                <th>Affine error</th>
+              </tr>
+            </thead>
+            <tbody id="copy-table"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer" id="copy-boundary"></p>
+      </section>
+
       <section class="evidence" aria-labelledby="evidence-title">
         <div class="section-heading">
           <div>
             <p class="section-label">Reproducible evidence</p>
             <h2 id="evidence-title">Inputs, assumptions, and failure states stay visible</h2>
           </div>
-          <a href="https://github.com/KIM3310/memoryflow-lab" class="repo-link">Inspect repository</a>
+          <a href="https://github.com/KIM3310/memoryflow-lab" class="repo-link">Repository</a>
         </div>
         <div class="table-wrap">
           <table>

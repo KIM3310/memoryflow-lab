@@ -51,8 +51,39 @@ def _assert_close(actual: Any, expected: float, label: str) -> None:
 
 def _assert_validation(stored: Any, expected: dict[str, Any], label: str) -> None:
     normalized = json.loads(json.dumps(expected))
-    if stored != normalized:
+    if not _validation_matches(stored, normalized):
         raise ValueError(f"stored {label} validation does not match raw samples")
+
+
+def _validation_matches(stored: Any, expected: Any) -> bool:
+    if isinstance(expected, bool):
+        return stored is expected
+    if isinstance(expected, float):
+        return (
+            isinstance(stored, (int, float))
+            and not isinstance(stored, bool)
+            and math.isfinite(float(stored))
+            and math.isfinite(expected)
+            and math.isclose(float(stored), expected, rel_tol=1e-9, abs_tol=1e-9)
+        )
+    if isinstance(expected, int):
+        return isinstance(stored, int) and not isinstance(stored, bool) and stored == expected
+    if isinstance(expected, dict):
+        return (
+            isinstance(stored, dict)
+            and stored.keys() == expected.keys()
+            and all(_validation_matches(stored[key], value) for key, value in expected.items())
+        )
+    if isinstance(expected, list):
+        return (
+            isinstance(stored, list)
+            and len(stored) == len(expected)
+            and all(
+                _validation_matches(stored_item, expected_item)
+                for stored_item, expected_item in zip(stored, expected, strict=True)
+            )
+        )
+    return stored == expected
 
 
 def _validate_environment(payload: dict[str, Any]) -> dict[str, Any]:

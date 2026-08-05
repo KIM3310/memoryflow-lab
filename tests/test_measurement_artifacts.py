@@ -42,3 +42,14 @@ def test_attention_modeled_byte_tampering_is_rejected() -> None:
     payload["samples"][0]["modeled_bytes"] += 1
     with pytest.raises(ValueError, match="attention.bytes"):
         validate_attention(payload)
+
+
+def test_validation_accepts_platform_roundoff_but_rejects_material_changes() -> None:
+    payload = copy.deepcopy(load_payload(ATTENTION_PATH))
+    validation = payload["models"]["independent_roofline"]["validation"]
+    validation["mean_absolute_percentage_error_pct"] += 1e-14
+    validate_attention(payload)
+
+    validation["mean_absolute_percentage_error_pct"] += 0.01
+    with pytest.raises(ValueError, match="attention.independent_roofline"):
+        validate_attention(payload)

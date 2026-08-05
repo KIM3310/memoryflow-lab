@@ -4,32 +4,28 @@ import argparse
 import importlib
 import json
 import platform
-import random
 import sys
-import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from statistics import median
 from typing import Any
 
 from memoryflow.io import write_json
 from memoryflow.measurement import (
-    TransferSample,
     bandwidth_only_model,
     compare_transfer_model,
     fit_affine_transfer_model,
 )
+from scripts.torch_benchmark import (
+    describe_device,
+    measure_copy,
+    parse_mib_sizes,
+    resolve_device,
+    seed_torch,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "evidence" / "measurements" / "local-torch-copy.json"
-
-
-def _parse_sizes(value: str) -> tuple[int, ...]:
-    sizes = tuple(int(item.strip()) for item in value.split(",") if item.strip())
-    if not sizes or any(size <= 0 for size in sizes):
-        raise argparse.ArgumentTypeError("sizes must be positive comma-separated MiB values")
-    return sizes
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -39,91 +35,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", choices=("auto", "cuda", "mps", "cpu"), default="auto")
     parser.add_argument("--device-label", default="")
     parser.add_argument("--dtype", choices=("float16", "float32"), default="float16")
-    parser.add_argument("--calibration-mib", type=_parse_sizes, default=(4, 16, 64))
-    parser.add_argument("--validation-mib", type=_parse_sizes, default=(1, 8, 32))
+    parser.add_argument("--calibration-mib", type=parse_mib_sizes, default=(4, 16, 64))
+    parser.add_argument("--validation-mib", type=parse_mib_sizes, default=(1, 8, 32))
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--repeats", type=int, default=40)
     parser.add_argument("--seed", type=int, default=3310)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     return parser
-
-
-def _resolve_device(torch: Any, requested: str) -> str:
-    if requested != "auto":
-        if requested == "cuda" and not torch.cuda.is_available():
-            raise RuntimeError("CUDA was requested but is unavailable")
-        if requested == "mps" and not torch.backends.mps.is_available():
-            raise RuntimeError("MPS was requested but is unavailable")
-        return requested
-    if torch.cuda.is_available():
-        return "cuda"
-    if torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
-
-
-def _synchronize(torch: Any, device: str) -> None:
-    if device == "cuda":
-        torch.cuda.synchronize()
-    elif device == "mps":
-        torch.mps.synchronize()
-
-
-def _percentile_95(values: list[float]) -> float:
-    ordered = sorted(values)
-    index = max(0, (len(ordered) * 95 + 99) // 100 - 1)
-    return ordered[index]
-
-
-def _measure(
-    torch: Any,
-    device: str,
-    dtype_name: str,
-    sizes_mib: tuple[int, ...],
-    warmup: int,
-    repeats: int,
-    seed: int,
-) -> dict[int, TransferSample]:
-    if warmup < 1 or repeats < 5:
-        raise ValueError("warmup must be >= 1 and repeats must be >= 5")
-    dtype = getattr(torch, dtype_name)
-    element_size = torch.empty((), dtype=dtype).element_size()
-    sizes_bytes = tuple(size * 1024**2 for size in sizes_mib)
-    maximum_elements = max(sizes_bytes) // element_size
-    source = torch.ones(maximum_elements, dtype=dtype, device=device)
-    target = torch.empty_like(source)
-    views = {
-        size: (source[: size // element_size], target[: size // element_size])
-        for size in sizes_bytes
-    }
-
-    for size in sizes_bytes:
-        source_view, target_view = views[size]
-        for _ in range(warmup):
-            target_view.copy_(source_view)
-        _synchronize(torch, device)
-
-    timings: dict[int, list[float]] = {size: [] for size in sizes_bytes}
-    randomizer = random.Random(seed)
-    for _ in range(repeats):
-        order = list(sizes_bytes)
-        randomizer.shuffle(order)
-        for size in order:
-            source_view, target_view = views[size]
-            _synchronize(torch, device)
-            started_ns = time.perf_counter_ns()
-            target_view.copy_(source_view)
-            _synchronize(torch, device)
-            timings[size].append((time.perf_counter_ns() - started_ns) / 1_000_000)
-
-    return {
-        size: TransferSample(
-            size_bytes=size,
-            median_ms=median(values),
-            p95_ms=_percentile_95(values),
-        )
-        for size, values in timings.items()
-    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -135,12 +53,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len(set(args.validation_mib)) != len(args.validation_mib):
         raise ValueError("validation sizes must be unique")
     torch = importlib.import_module("torch")
-    device = _resolve_device(torch, args.device)
+    device = resolve_device(torch, args.device)
     if device == "cpu":
         raise RuntimeError("this evidence run requires a GPU backend; choose CUDA or MPS")
 
     all_sizes = tuple(dict.fromkeys(args.calibration_mib + args.validation_mib))
-    measured = _measure(
+    seed_torch(torch, args.seed, device)
+    measured = measure_copy(
         torch,
         device,
         args.dtype,
@@ -175,7 +94,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "environment": {
             "device_backend": device,
-            "device_label": args.device_label or device,
+            "device_label": describe_device(torch, device, args.device_label),
             "dtype": args.dtype,
             "machine": platform.machine(),
             "os": platform.platform(),

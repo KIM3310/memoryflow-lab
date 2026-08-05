@@ -38,6 +38,7 @@ jobs:
       - name: Reproduce evidence
         run: |
           python -m scripts.build_evidence > /tmp/memoryflow-evidence.json
+          python -m scripts.build_measurement_summary --check
           git diff --exit-code -- site/results.json evidence/benchmark-summary.md
 
   container:

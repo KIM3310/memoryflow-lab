@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
+from memoryflow import __version__
 from memoryflow.api import app, resolve_site_directory
 from memoryflow.cli import main
 
@@ -17,6 +19,14 @@ def test_health_endpoint_declares_model_boundary() -> None:
     response = TestClient(app).get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "model": "analytical-first-order"}
+
+
+def test_openapi_reports_package_version() -> None:
+    response = TestClient(app).get("/openapi.json")
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert response.status_code == 200
+    assert __version__ == project["project"]["version"]
+    assert response.json()["info"]["version"] == __version__
 
 
 def test_simulation_endpoint() -> None:

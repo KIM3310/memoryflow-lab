@@ -51,6 +51,14 @@ latency + throughput + traffic + energy proxy + bottleneck
 
 The main equations and omissions are defined in [`docs/model.md`](docs/model.md). Key properties are tested rather than inferred from fixed examples: increasing remote bandwidth or overlap cannot increase modeled tiering latency, increasing the HBM window reduces remote traffic, and insufficient near-memory throughput can reverse the selected policy.
 
+Technical notes:
+
+- [`docs/architecture.md`](docs/architecture.md): module boundaries and data flow
+- [`docs/model.md`](docs/model.md): equations, assumptions, and falsification conditions
+- [`docs/experiment-log.md`](docs/experiment-log.md): hypothesis-by-hypothesis decision record
+- [`docs/validation.md`](docs/validation.md): protected claims and remaining gaps
+- [`docs/ai-use.md`](docs/ai-use.md): implementation-assistance boundary
+
 ## PyTorch GPU validation
 
 Two measurements test different parts of the analytical model. Both use disjoint calibration and validation inputs.

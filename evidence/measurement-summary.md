@@ -6,6 +6,8 @@
 - Backend: `mps`
 - PyTorch: `2.8.0`
 - Dtype: `float16`
+- Attention run: `2026-08-05T09:26:05.436535+00:00`
+- Copy run: `2026-08-05T09:25:55.262960+00:00`
 
 ## Decode attention measurement
 

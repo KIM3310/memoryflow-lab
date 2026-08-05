@@ -23,8 +23,15 @@ from memoryflow.measurement import (
     fit_affine_transfer_model,
     fit_attention_affine_model,
 )
-from scripts.measure_torch import _measure as measure_copy
-from scripts.measure_torch import _parse_sizes, _percentile_95, _resolve_device, _synchronize
+from scripts.torch_benchmark import (
+    describe_device,
+    measure_copy,
+    parse_mib_sizes,
+    percentile_95,
+    resolve_device,
+    seed_torch,
+    synchronize,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "evidence" / "measurements" / "local-attention.json"
@@ -49,7 +56,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--head-dim", type=int, default=64)
     parser.add_argument("--calibration-contexts", type=_parse_contexts, default=(256, 1024, 4096))
     parser.add_argument("--validation-contexts", type=_parse_contexts, default=(512, 2048, 8192))
-    parser.add_argument("--copy-calibration-mib", type=_parse_sizes, default=(4, 16, 64))
+    parser.add_argument("--copy-calibration-mib", type=parse_mib_sizes, default=(4, 16, 64))
     parser.add_argument("--gemm-size", type=int, default=2048)
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--repeats", type=int, default=40)
@@ -73,17 +80,17 @@ def _measure_gemm(
     right = torch.randn((size, size), dtype=dtype, device=device)
     for _ in range(warmup):
         torch.mm(left, right)
-    _synchronize(torch, device)
+    synchronize(torch, device)
 
     timings: list[float] = []
     for _ in range(repeats):
-        _synchronize(torch, device)
+        synchronize(torch, device)
         started_ns = time.perf_counter_ns()
         torch.mm(left, right)
-        _synchronize(torch, device)
+        synchronize(torch, device)
         timings.append((time.perf_counter_ns() - started_ns) / 1_000_000)
     median_ms = median(timings)
-    p95_ms = _percentile_95(timings)
+    p95_ms = percentile_95(timings)
     flops = 2 * size**3
     return {
         "size": size,
@@ -128,7 +135,7 @@ def _measure_attention(
             functional.scaled_dot_product_attention(
                 query, key, value, dropout_p=0.0, is_causal=False
             )
-        _synchronize(torch, device)
+        synchronize(torch, device)
 
     timings: dict[int, list[float]] = {context: [] for context in contexts}
     randomizer = random.Random(seed)
@@ -137,19 +144,19 @@ def _measure_attention(
         randomizer.shuffle(order)
         for context in order:
             query, key, value = tensors[context]
-            _synchronize(torch, device)
+            synchronize(torch, device)
             started_ns = time.perf_counter_ns()
             functional.scaled_dot_product_attention(
                 query, key, value, dropout_p=0.0, is_causal=False
             )
-            _synchronize(torch, device)
+            synchronize(torch, device)
             timings[context].append((time.perf_counter_ns() - started_ns) / 1_000_000)
 
     return {
         context: AttentionSample(
             context_tokens=context,
             median_ms=median(values),
-            p95_ms=_percentile_95(values),
+            p95_ms=percentile_95(values),
         )
         for context, values in timings.items()
     }
@@ -168,10 +175,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     torch = importlib.import_module("torch")
     functional = importlib.import_module("torch.nn.functional")
-    device = _resolve_device(torch, args.device)
+    device = resolve_device(torch, args.device)
     if device == "cpu":
         raise RuntimeError("this evidence run requires a GPU backend; choose CUDA or MPS")
     dtype = getattr(torch, args.dtype)
+    seed_torch(torch, args.seed, device)
     dtype_bytes = torch.empty((), dtype=dtype).element_size()
     shape = AttentionShape(args.batch_size, args.heads, args.head_dim, dtype_bytes)
     shape.validate()
@@ -246,7 +254,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "environment": {
             "device_backend": device,
-            "device_label": args.device_label or device,
+            "device_label": describe_device(torch, device, args.device_label),
             "dtype": args.dtype,
             "machine": platform.machine(),
             "os": platform.platform(),

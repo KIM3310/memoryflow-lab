@@ -68,6 +68,49 @@ def validate_copy(payload: dict[str, Any]) -> None:
     _validate_environment(payload)
     if payload.get("kind") != "pytorch-synchronized-device-copy":
         raise ValueError("unexpected copy measurement kind")
+    protocol = _require_dict(payload, "protocol")
+    if int(protocol["warmup_iterations_per_size"]) < 1:
+        raise ValueError("copy measurement requires at least one warmup")
+    if int(protocol["measured_iterations_per_size"]) < 5:
+        raise ValueError("copy measurement requires at least five measured iterations")
+    raw_calibration_sizes = [int(value) * 1024**2 for value in protocol["calibration_sizes_mib"]]
+    raw_validation_sizes = [int(value) * 1024**2 for value in protocol["validation_sizes_mib"]]
+    calibration_sizes = set(raw_calibration_sizes)
+    validation_sizes = set(raw_validation_sizes)
+    if len(calibration_sizes) != len(raw_calibration_sizes) or len(validation_sizes) != len(
+        raw_validation_sizes
+    ):
+        raise ValueError("copy protocol sizes must be unique")
+    if calibration_sizes & validation_sizes:
+        raise ValueError("copy calibration and validation sizes must be disjoint")
+    expected_split = {size: "calibration" for size in calibration_sizes}
+    expected_split.update({size: "validation" for size in validation_sizes})
+    raw_samples = payload.get("samples")
+    if not isinstance(raw_samples, list):
+        raise ValueError("copy samples must be a list")
+    seen_sizes: set[int] = set()
+    for raw in raw_samples:
+        if not isinstance(raw, dict):
+            raise ValueError("copy sample must be an object")
+        sample = TransferSample(
+            size_bytes=int(raw["size_bytes"]),
+            median_ms=float(raw["median_ms"]),
+            p95_ms=float(raw["p95_ms"]),
+        )
+        sample.validate()
+        if sample.size_bytes in seen_sizes:
+            raise ValueError("copy sample sizes must be unique")
+        seen_sizes.add(sample.size_bytes)
+        if raw.get("split") != expected_split.get(sample.size_bytes):
+            raise ValueError("copy sample split does not match protocol")
+        _assert_close(raw.get("size_mib"), sample.size_bytes / 1024**2, "copy.size_mib")
+        _assert_close(
+            raw.get("observed_bandwidth_gbps"),
+            sample.observed_bandwidth_gbps,
+            "copy.observed_bandwidth",
+        )
+    if seen_sizes != set(expected_split):
+        raise ValueError("copy samples do not match protocol sizes")
     calibration = samples_from_payload(payload, "calibration")
     validation = samples_from_payload(payload, "validation")
     expected_models = {
@@ -87,6 +130,14 @@ def validate_attention(payload: dict[str, Any]) -> None:
     if payload.get("kind") != "pytorch-sdpa-decode-attention":
         raise ValueError("unexpected attention measurement kind")
     protocol = _require_dict(payload, "protocol")
+    if int(protocol.get("query_tokens", 0)) != 1:
+        raise ValueError("attention model currently requires one query token")
+    if int(protocol["warmup_iterations"]) < 1:
+        raise ValueError("attention measurement requires at least one warmup")
+    if int(protocol["measured_iterations_per_context"]) < 5:
+        raise ValueError("attention measurement requires at least five measured iterations")
+    if int(protocol["gemm_iterations"]) < 5:
+        raise ValueError("attention measurement requires at least five GEMM iterations")
     dtype_bytes = {"float16": 2, "float32": 4}.get(str(environment.get("dtype")))
     if dtype_bytes is None:
         raise ValueError("unsupported attention measurement dtype")
@@ -98,6 +149,37 @@ def validate_attention(payload: dict[str, Any]) -> None:
     )
     calibration = attention_samples_from_payload(payload, "calibration")
     validation = attention_samples_from_payload(payload, "validation")
+    raw_calibration_contexts = [int(value) for value in protocol["calibration_contexts"]]
+    raw_validation_contexts = [int(value) for value in protocol["validation_contexts"]]
+    calibration_contexts = set(raw_calibration_contexts)
+    validation_contexts = set(raw_validation_contexts)
+    if len(calibration_contexts) != len(raw_calibration_contexts) or len(
+        validation_contexts
+    ) != len(raw_validation_contexts):
+        raise ValueError("attention protocol contexts must be unique")
+    if calibration_contexts & validation_contexts:
+        raise ValueError("attention calibration and validation contexts must be disjoint")
+    expected_split = {context: "calibration" for context in calibration_contexts}
+    expected_split.update({context: "validation" for context in validation_contexts})
+    raw_attention_samples = payload.get("samples")
+    if not isinstance(raw_attention_samples, list):
+        raise ValueError("attention samples must be a list")
+    seen_contexts: set[int] = set()
+    for raw in raw_attention_samples:
+        if not isinstance(raw, dict):
+            raise ValueError("attention sample must be an object")
+        context = int(raw["context_tokens"])
+        if context in seen_contexts:
+            raise ValueError("attention contexts must be unique")
+        seen_contexts.add(context)
+        if raw.get("split") != expected_split.get(context):
+            raise ValueError("attention sample split does not match protocol")
+        _assert_close(raw.get("modeled_flops"), float(shape.flops(context)), "attention.flops")
+        _assert_close(
+            raw.get("modeled_bytes"), float(shape.modeled_bytes(context)), "attention.bytes"
+        )
+    if seen_contexts != set(expected_split):
+        raise ValueError("attention samples do not match protocol contexts")
 
     hardware = _require_dict(payload, "hardware_calibration")
     copy_payload = hardware.get("copy")
@@ -116,6 +198,18 @@ def validate_attention(payload: dict[str, Any]) -> None:
         for sample in raw_copy_samples
         if isinstance(sample, dict)
     )
+    expected_copy_sizes = {int(value) * 1024**2 for value in protocol["copy_calibration_sizes_mib"]}
+    if {sample.size_bytes for sample in copy_samples} != expected_copy_sizes:
+        raise ValueError("attention copy samples do not match protocol sizes")
+    for raw, sample in zip(raw_copy_samples, copy_samples, strict=True):
+        if not isinstance(raw, dict):
+            raise ValueError("attention copy sample must be an object")
+        sample.validate()
+        _assert_close(
+            raw.get("observed_bandwidth_gbps"),
+            sample.observed_bandwidth_gbps,
+            "attention.copy.observed_bandwidth",
+        )
     copy_model = fit_affine_transfer_model(copy_samples)
     _assert_close(
         copy_payload.get("bandwidth_gbps"), copy_model.bandwidth_gbps, "attention.copy.bandwidth"
@@ -125,10 +219,15 @@ def validate_attention(payload: dict[str, Any]) -> None:
     )
 
     gemm_size = int(gemm["size"])
+    if gemm_size != int(protocol["gemm_size"]):
+        raise ValueError("stored GEMM size does not match protocol")
     gemm_flops = 2 * gemm_size**3
     if int(gemm["flops"]) != gemm_flops:
         raise ValueError("stored GEMM FLOPs do not match GEMM size")
     gemm_median_ms = float(gemm["median_ms"])
+    gemm_p95_ms = float(gemm["p95_ms"])
+    if gemm_median_ms <= 0 or gemm_p95_ms < gemm_median_ms:
+        raise ValueError("stored GEMM latency statistics are invalid")
     compute_tops = gemm_flops / (gemm_median_ms / 1000) / 1_000_000_000_000
     _assert_close(gemm.get("effective_tops"), compute_tops, "attention.gemm.effective_tops")
 
@@ -176,7 +275,15 @@ def render(copy_payload: dict[str, Any], attention_payload: dict[str, Any]) -> s
     validate_attention(attention_payload)
     copy_environment = copy_payload["environment"]
     attention_environment = attention_payload["environment"]
-    for field in ("device_backend", "device_label", "dtype", "torch_version"):
+    for field in (
+        "device_backend",
+        "device_label",
+        "dtype",
+        "torch_version",
+        "machine",
+        "os",
+        "python_version",
+    ):
         if copy_environment[field] != attention_environment[field]:
             raise ValueError(f"copy and attention environments differ: {field}")
 
@@ -203,6 +310,8 @@ def render(copy_payload: dict[str, Any], attention_payload: dict[str, Any]) -> s
         f"- Backend: `{attention_environment['device_backend']}`",
         f"- PyTorch: `{attention_environment['torch_version']}`",
         f"- Dtype: `{attention_environment['dtype']}`",
+        f"- Attention run: `{attention_payload['generated_at_utc']}`",
+        f"- Copy run: `{copy_payload['generated_at_utc']}`",
         "",
         "## Decode attention measurement",
         "",

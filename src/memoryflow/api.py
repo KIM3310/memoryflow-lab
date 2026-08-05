@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
+from memoryflow import __version__
 from memoryflow.io import request_from_dict
 from memoryflow.simulator import simulate
 
@@ -26,7 +27,7 @@ SITE = resolve_site_directory()
 
 app = FastAPI(
     title="MemoryFlow Lab",
-    version="0.1.0",
+    version=__version__,
     description="Deterministic LLM KV-cache memory co-design simulator",
 )
 

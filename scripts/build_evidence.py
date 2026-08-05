@@ -15,6 +15,8 @@ SCENARIOS = (
     ROOT / "scenarios" / "7b-long-context-near-memory.json",
     ROOT / "scenarios" / "7b-long-context-near-memory-stress.json",
 )
+MEASUREMENT = ROOT / "evidence" / "measurements" / "apple-m4-mps-copy.json"
+ATTENTION_MEASUREMENT = ROOT / "evidence" / "measurements" / "apple-m4-mps-attention.json"
 
 
 def _digest(paths: tuple[Path, ...]) -> str:
@@ -34,6 +36,8 @@ def build() -> dict[str, object]:
     base_request = load_request(SCENARIOS[1])
     sweep = sweep_hbm_windows(base_request)
     frontier = pareto_front(sweep)
+    measurement = json.loads(MEASUREMENT.read_text(encoding="utf-8"))
+    attention_measurement = json.loads(ATTENTION_MEASUREMENT.read_text(encoding="utf-8"))
     payload: dict[str, object] = {
         "schema_version": "1.0",
         "scenario_sha256": _digest(SCENARIOS),
@@ -43,6 +47,8 @@ def build() -> dict[str, object]:
         ),
         "results": [result.to_dict(include_steps=False) for result in results],
         "pareto_front": [result.to_dict(include_steps=False) for result in frontier],
+        "measurement": measurement,
+        "attention_measurement": attention_measurement,
     }
     write_json(ROOT / "site" / "results.json", payload)
 

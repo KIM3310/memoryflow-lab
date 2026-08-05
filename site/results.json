@@ -1,5 +1,348 @@
 {
+  "attention_measurement": {
+    "environment": {
+      "device_backend": "mps",
+      "device_label": "Apple M4 (10-core GPU)",
+      "dtype": "float16",
+      "machine": "arm64",
+      "os": "macOS-27.0-arm64-arm-64bit",
+      "python_version": "3.12.13",
+      "torch_version": "2.8.0"
+    },
+    "generated_at_utc": "2026-08-05T09:26:05.436535+00:00",
+    "hardware_calibration": {
+      "copy": {
+        "bandwidth_gbps": 46.4505640240948,
+        "base_latency_us": 281.7469166666667,
+        "samples": [
+          {
+            "median_ms": 0.351938,
+            "observed_bandwidth_gbps": 11.917735510231916,
+            "p95_ms": 0.657333,
+            "size_bytes": 4194304
+          },
+          {
+            "median_ms": 0.6680625,
+            "observed_bandwidth_gbps": 25.11324314716063,
+            "p95_ms": 0.966,
+            "size_bytes": 16777216
+          },
+          {
+            "median_ms": 1.7214580000000002,
+            "observed_bandwidth_gbps": 38.983735879701975,
+            "p95_ms": 2.252041,
+            "size_bytes": 67108864
+          }
+        ]
+      },
+      "gemm": {
+        "effective_tops": 3.4965960711841553,
+        "flops": 17179869184,
+        "median_ms": 4.9133125,
+        "p95_ms": 5.0775,
+        "size": 2048
+      }
+    },
+    "kind": "pytorch-sdpa-decode-attention",
+    "models": {
+      "attention_affine": {
+        "base_latency_us": 216.2677671595982,
+        "effective_stream_gbps": 67.1853401128599,
+        "validation": {
+          "max_absolute_percentage_error_pct": 9.660985383614749,
+          "mean_absolute_percentage_error_pct": 4.720196264986735,
+          "points": [
+            {
+              "absolute_percentage_error_pct": 3.648729458025753,
+              "compute_floor_ms": null,
+              "context_tokens": 512,
+              "measured_ms": 0.2406875,
+              "memory_floor_ms": null,
+              "predicted_ms": 0.23190546428571426
+            },
+            {
+              "absolute_percentage_error_pct": 0.850873953319702,
+              "compute_floor_ms": null,
+              "context_tokens": 2048,
+              "measured_ms": 0.2763755,
+              "memory_floor_ms": null,
+              "predicted_ms": 0.2787271071428571
+            },
+            {
+              "absolute_percentage_error_pct": 9.660985383614749,
+              "compute_floor_ms": null,
+              "context_tokens": 8192,
+              "measured_ms": 0.4249585,
+              "memory_floor_ms": null,
+              "predicted_ms": 0.4660136785714285
+            }
+          ]
+        }
+      },
+      "independent_roofline": {
+        "base_latency_us": 281.7469166666667,
+        "compute_tops": 3.4965960711841553,
+        "memory_bandwidth_gbps": 46.4505640240948,
+        "validation": {
+          "max_absolute_percentage_error_pct": 51.30308956861439,
+          "mean_absolute_percentage_error_pct": 37.463534101787076,
+          "points": [
+            {
+              "absolute_percentage_error_pct": 26.45651618153837,
+              "compute_floor_ms": 0.0002998847961425781,
+              "context_tokens": 512,
+              "measured_ms": 0.2406875,
+              "memory_floor_ms": 0.022618110717773438,
+              "predicted_ms": 0.30436502738444016
+            },
+            {
+              "absolute_percentage_error_pct": 34.63099655520846,
+              "compute_floor_ms": 0.0011995391845703125,
+              "context_tokens": 2048,
+              "measured_ms": 0.2763755,
+              "memory_floor_ms": 0.09034017321777345,
+              "predicted_ms": 0.37208708988444017
+            },
+            {
+              "absolute_percentage_error_pct": 51.30308956861439,
+              "compute_floor_ms": 0.00479815673828125,
+              "context_tokens": 8192,
+              "measured_ms": 0.4249585,
+              "memory_floor_ms": 0.36122842321777343,
+              "predicted_ms": 0.6429753398844402
+            }
+          ]
+        }
+      }
+    },
+    "protocol": {
+      "batch_size": 1,
+      "calibration_contexts": [
+        256,
+        1024,
+        4096
+      ],
+      "copy_calibration_sizes_mib": [
+        4,
+        16,
+        64
+      ],
+      "gemm_iterations": 30,
+      "gemm_size": 2048,
+      "head_dim": 64,
+      "heads": 8,
+      "measured_iterations_per_context": 60,
+      "query_tokens": 1,
+      "seed": 3310,
+      "timing_boundary": "host timer around scaled_dot_product_attention with device synchronization before and after",
+      "validation_contexts": [
+        512,
+        2048,
+        8192
+      ],
+      "warmup_iterations": 15
+    },
+    "samples": [
+      {
+        "context_tokens": 256,
+        "median_ms": 0.214562,
+        "modeled_bytes": 526336,
+        "modeled_flops": 524288,
+        "p95_ms": 0.257667,
+        "split": "calibration"
+      },
+      {
+        "context_tokens": 512,
+        "median_ms": 0.2406875,
+        "modeled_bytes": 1050624,
+        "modeled_flops": 1048576,
+        "p95_ms": 0.301375,
+        "split": "validation"
+      },
+      {
+        "context_tokens": 1024,
+        "median_ms": 0.2594375,
+        "modeled_bytes": 2099200,
+        "modeled_flops": 2097152,
+        "p95_ms": 0.2815,
+        "split": "calibration"
+      },
+      {
+        "context_tokens": 2048,
+        "median_ms": 0.2763755,
+        "modeled_bytes": 4196352,
+        "modeled_flops": 4194304,
+        "p95_ms": 0.307334,
+        "split": "validation"
+      },
+      {
+        "context_tokens": 4096,
+        "median_ms": 0.338771,
+        "modeled_bytes": 8390656,
+        "modeled_flops": 8388608,
+        "p95_ms": 0.576833,
+        "split": "calibration"
+      },
+      {
+        "context_tokens": 8192,
+        "median_ms": 0.4249585,
+        "modeled_bytes": 16779264,
+        "modeled_flops": 16777216,
+        "p95_ms": 0.521875,
+        "split": "validation"
+      }
+    ],
+    "schema_version": "1.0",
+    "scope": {
+      "measured": "single-layer PyTorch scaled dot-product decode attention",
+      "not_measured": "model weights, multi-layer execution, KV allocation/paging, HBM, CXL, remote memory, or end-to-end serving",
+      "use": "compare independent roofline inputs and attention-calibrated analytical predictions on held-out context lengths"
+    }
+  },
   "disclaimer": "Synthetic first-order estimates for architectural comparison; not measured vendor-product performance.",
+  "measurement": {
+    "environment": {
+      "device_backend": "mps",
+      "device_label": "Apple M4 (10-core GPU)",
+      "dtype": "float16",
+      "machine": "arm64",
+      "os": "macOS-27.0-arm64-arm-64bit",
+      "python_version": "3.12.13",
+      "torch_version": "2.8.0"
+    },
+    "generated_at_utc": "2026-08-05T09:25:55.262960+00:00",
+    "kind": "pytorch-synchronized-device-copy",
+    "models": {
+      "affine": {
+        "bandwidth_gbps": 47.93761606099066,
+        "base_latency_us": 309.90266666666656,
+        "validation": {
+          "max_absolute_percentage_error_pct": 17.123536891920796,
+          "mean_absolute_percentage_error_pct": 8.519083853211184,
+          "points": [
+            {
+              "absolute_percentage_error_pct": 17.123536891920796,
+              "measured_ms": 0.2832705,
+              "predicted_ms": 0.33177642857142847,
+              "size_bytes": 1048576
+            },
+            {
+              "absolute_percentage_error_pct": 7.8337440605518855,
+              "measured_ms": 0.449667,
+              "predicted_ms": 0.4848927619047618,
+              "size_bytes": 8388608
+            },
+            {
+              "absolute_percentage_error_pct": 0.599970607160867,
+              "measured_ms": 1.0159585,
+              "predicted_ms": 1.0098630476190475,
+              "size_bytes": 33554432
+            }
+          ]
+        }
+      },
+      "bandwidth_only": {
+        "bandwidth_gbps": 39.45984432766161,
+        "base_latency_us": 0.0,
+        "validation": {
+          "max_absolute_percentage_error_pct": 90.61912829345096,
+          "mean_absolute_percentage_error_pct": 53.21471820192375,
+          "points": [
+            {
+              "absolute_percentage_error_pct": 90.61912829345096,
+              "measured_ms": 0.2832705,
+              "predicted_ms": 0.026573242187500002,
+              "size_bytes": 1048576
+            },
+            {
+              "absolute_percentage_error_pct": 52.72369609066264,
+              "measured_ms": 0.449667,
+              "predicted_ms": 0.21258593750000002,
+              "size_bytes": 8388608
+            },
+            {
+              "absolute_percentage_error_pct": 16.30133022165767,
+              "measured_ms": 1.0159585,
+              "predicted_ms": 0.8503437500000001,
+              "size_bytes": 33554432
+            }
+          ]
+        }
+      }
+    },
+    "protocol": {
+      "calibration_sizes_mib": [
+        4,
+        16,
+        64
+      ],
+      "measured_iterations_per_size": 60,
+      "seed": 3310,
+      "timing_boundary": "host timer around copy_ with device synchronization before and after",
+      "validation_sizes_mib": [
+        1,
+        8,
+        32
+      ],
+      "warmup_iterations_per_size": 15
+    },
+    "samples": [
+      {
+        "median_ms": 0.2832705,
+        "observed_bandwidth_gbps": 3.7016773719819045,
+        "p95_ms": 0.321667,
+        "size_bytes": 1048576,
+        "size_mib": 1.0,
+        "split": "validation"
+      },
+      {
+        "median_ms": 0.360854,
+        "observed_bandwidth_gbps": 11.623271461588343,
+        "p95_ms": 0.391916,
+        "size_bytes": 4194304,
+        "size_mib": 4.0,
+        "split": "calibration"
+      },
+      {
+        "median_ms": 0.449667,
+        "observed_bandwidth_gbps": 18.655155926496718,
+        "p95_ms": 0.494208,
+        "size_bytes": 8388608,
+        "size_mib": 8.0,
+        "split": "validation"
+      },
+      {
+        "median_ms": 0.7055625000000001,
+        "observed_bandwidth_gbps": 23.778497298254933,
+        "p95_ms": 0.764792,
+        "size_bytes": 16777216,
+        "size_mib": 16.0,
+        "split": "calibration"
+      },
+      {
+        "median_ms": 1.0159585,
+        "observed_bandwidth_gbps": 33.027364798857434,
+        "p95_ms": 1.109583,
+        "size_bytes": 33554432,
+        "size_mib": 32.0,
+        "split": "validation"
+      },
+      {
+        "median_ms": 1.7006875,
+        "observed_bandwidth_gbps": 39.45984432766161,
+        "p95_ms": 1.791625,
+        "size_bytes": 67108864,
+        "size_mib": 64.0,
+        "split": "calibration"
+      }
+    ],
+    "schema_version": "1.0",
+    "scope": {
+      "measured": "PyTorch device-to-device tensor copy latency",
+      "not_measured": "HBM, CXL, remote memory, LLM end-to-end latency, or vendor products",
+      "use": "validate the bytes/bandwidth plus fixed-latency equation shape"
+    }
+  },
   "pareto_front": [
     {
       "assumptions": [

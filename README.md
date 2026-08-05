@@ -107,6 +107,10 @@ make measure
 
 Local runs write ignored `local-*.json` files and cannot overwrite committed references accidentally. Both scripts accept an explicit device label, output path, warmup count, repeat count, and calibration/validation sets.
 
+For a CUDA kernel trace and a repeatability review checklist, follow
+[`docs/cuda-validation.md`](docs/cuda-validation.md). The profiler command requires a CUDA
+GPU and does not fall back to CPU or MPS.
+
 ## Scenario results
 
 The bundled case uses a synthetic 24 GiB accelerator profile, a 7B FP16 GQA workload, an 8,192-token context, and 16 concurrent sequences.
@@ -150,6 +154,7 @@ The production image runs as UID `10001`, uses a read-only filesystem during the
 | `src/memoryflow/measurement.py` | transfer and attention model fitting with held-out comparison |
 | `scripts/measure_torch.py` | synchronized PyTorch GPU copy measurement |
 | `scripts/measure_attention.py` | synchronized PyTorch SDPA/KV attention measurement |
+| `scripts/profile_attention.py` | local CUDA operator and kernel trace capture |
 | `scenarios/` | versioned synthetic experiment inputs |
 | `evidence/` | generated scenario summaries and committed raw measurements |
 | `tests/` | equations, properties, failure states, interfaces, and measurement fitting |

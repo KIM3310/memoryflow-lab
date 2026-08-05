@@ -2,7 +2,7 @@ PYTHON ?= python3
 VENV ?= .venv
 BIN := $(VENV)/bin
 
-.PHONY: install install-measure test lint typecheck verify benchmark measurement-check measure measure-copy measure-attention run docker-build docker-verify docker-up docker-down verify-all
+.PHONY: install install-measure test lint typecheck verify benchmark measurement-check measure measure-copy measure-attention profile-cuda run docker-build docker-verify docker-up docker-down verify-all
 
 install:
 	$(PYTHON) -m venv $(VENV)
@@ -40,6 +40,9 @@ measure-copy:
 
 measure-attention:
 	$(BIN)/python -m scripts.measure_attention --device auto
+
+profile-cuda:
+	$(BIN)/python -m scripts.profile_attention
 
 run:
 	$(BIN)/uvicorn memoryflow.api:app --reload

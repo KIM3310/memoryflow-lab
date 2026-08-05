@@ -1,6 +1,8 @@
 .venv/
 .measure-venv/
 evidence/measurements/local-*.json
+evidence/measurements/local-*.md
+evidence/profiles/local-*/
 __pycache__/
 .pytest_cache/
 .mypy_cache/

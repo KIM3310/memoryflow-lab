@@ -1,8 +1,22 @@
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from statistics import fmean
 from typing import Any
+
+
+def _is_finite_number(value: object) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def _is_positive_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 @dataclass(frozen=True)
@@ -12,10 +26,15 @@ class TransferSample:
     p95_ms: float
 
     def validate(self) -> None:
-        if self.size_bytes <= 0:
-            raise ValueError("size_bytes must be positive")
-        if self.median_ms <= 0 or self.p95_ms <= 0:
-            raise ValueError("latencies must be positive")
+        if not _is_positive_integer(self.size_bytes):
+            raise ValueError("size_bytes must be a positive integer")
+        if (
+            not _is_finite_number(self.median_ms)
+            or not _is_finite_number(self.p95_ms)
+            or self.median_ms <= 0
+            or self.p95_ms <= 0
+        ):
+            raise ValueError("latencies must be positive finite numbers")
         if self.p95_ms < self.median_ms:
             raise ValueError("p95_ms cannot be lower than median_ms")
 
@@ -30,15 +49,15 @@ class TransferModel:
     base_latency_us: float
 
     def validate(self) -> None:
-        if self.bandwidth_gbps <= 0:
-            raise ValueError("bandwidth_gbps must be positive")
-        if self.base_latency_us < 0:
-            raise ValueError("base_latency_us cannot be negative")
+        if not _is_finite_number(self.bandwidth_gbps) or self.bandwidth_gbps <= 0:
+            raise ValueError("bandwidth_gbps must be a positive finite number")
+        if not _is_finite_number(self.base_latency_us) or self.base_latency_us < 0:
+            raise ValueError("base_latency_us must be a non-negative finite number")
 
     def predict_ms(self, size_bytes: int) -> float:
         self.validate()
-        if size_bytes <= 0:
-            raise ValueError("size_bytes must be positive")
+        if not _is_positive_integer(size_bytes):
+            raise ValueError("size_bytes must be a positive integer")
         transfer_ms = size_bytes / (self.bandwidth_gbps * 1_000_000_000) * 1000
         return self.base_latency_us / 1000 + transfer_ms
 
@@ -52,19 +71,19 @@ class AttentionShape:
 
     def validate(self) -> None:
         values = (self.batch_size, self.heads, self.head_dim, self.dtype_bytes)
-        if any(value <= 0 for value in values):
-            raise ValueError("attention shape values must be positive")
+        if any(not _is_positive_integer(value) for value in values):
+            raise ValueError("attention shape values must be positive integers")
 
     def flops(self, context_tokens: int) -> int:
         self.validate()
-        if context_tokens <= 0:
-            raise ValueError("context_tokens must be positive")
+        if not _is_positive_integer(context_tokens):
+            raise ValueError("context_tokens must be a positive integer")
         return 4 * self.batch_size * self.heads * self.head_dim * context_tokens
 
     def modeled_bytes(self, context_tokens: int) -> int:
         self.validate()
-        if context_tokens <= 0:
-            raise ValueError("context_tokens must be positive")
+        if not _is_positive_integer(context_tokens):
+            raise ValueError("context_tokens must be a positive integer")
         kv_elements = 2 * self.batch_size * self.heads * context_tokens * self.head_dim
         query_and_output_elements = 2 * self.batch_size * self.heads * self.head_dim
         return (kv_elements + query_and_output_elements) * self.dtype_bytes
@@ -77,10 +96,15 @@ class AttentionSample:
     p95_ms: float
 
     def validate(self) -> None:
-        if self.context_tokens <= 0:
-            raise ValueError("context_tokens must be positive")
-        if self.median_ms <= 0 or self.p95_ms <= 0:
-            raise ValueError("latencies must be positive")
+        if not _is_positive_integer(self.context_tokens):
+            raise ValueError("context_tokens must be a positive integer")
+        if (
+            not _is_finite_number(self.median_ms)
+            or not _is_finite_number(self.p95_ms)
+            or self.median_ms <= 0
+            or self.p95_ms <= 0
+        ):
+            raise ValueError("latencies must be positive finite numbers")
         if self.p95_ms < self.median_ms:
             raise ValueError("p95_ms cannot be lower than median_ms")
 
@@ -92,10 +116,15 @@ class AttentionRooflineModel:
     base_latency_us: float
 
     def validate(self) -> None:
-        if self.compute_tops <= 0 or self.memory_bandwidth_gbps <= 0:
-            raise ValueError("compute and bandwidth calibration must be positive")
-        if self.base_latency_us < 0:
-            raise ValueError("base_latency_us cannot be negative")
+        if (
+            not _is_finite_number(self.compute_tops)
+            or not _is_finite_number(self.memory_bandwidth_gbps)
+            or self.compute_tops <= 0
+            or self.memory_bandwidth_gbps <= 0
+        ):
+            raise ValueError("compute and bandwidth calibration must be positive finite numbers")
+        if not _is_finite_number(self.base_latency_us) or self.base_latency_us < 0:
+            raise ValueError("base_latency_us must be a non-negative finite number")
 
     def components_ms(self, shape: AttentionShape, context_tokens: int) -> tuple[float, float]:
         self.validate()

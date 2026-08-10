@@ -43,6 +43,19 @@ def test_simulation_endpoint_rejects_invalid_payload() -> None:
     assert response.status_code == 422
 
 
+def test_simulation_endpoint_rejects_non_finite_numbers() -> None:
+    payload = SCENARIO.read_text(encoding="utf-8").replace(
+        '"parameter_count_b": 7.0', '"parameter_count_b": NaN'
+    )
+    response = TestClient(app).post(
+        "/v1/simulations",
+        content=payload,
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 422
+    assert "positive finite number" in response.json()["detail"]
+
+
 def test_dashboard_is_served() -> None:
     response = TestClient(app).get("/")
     assert response.status_code == 200

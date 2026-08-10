@@ -66,13 +66,30 @@ def test_samples_are_selected_by_split() -> None:
     "invalid",
     [
         TransferSample(0, 1, 1),
+        TransferSample(True, 1, 1),
         TransferSample(1, 0, 1),
+        TransferSample(1, float("nan"), 1),
+        TransferSample(1, 1, float("inf")),
         TransferSample(1, 2, 1),
     ],
 )
 def test_invalid_samples_are_rejected(invalid: TransferSample) -> None:
     with pytest.raises(ValueError):
         invalid.validate()
+
+
+@pytest.mark.parametrize(
+    ("model", "size_bytes"),
+    [
+        (TransferModel(float("nan"), 0), 1),
+        (TransferModel(10**1000, 0), 1),
+        (TransferModel(1, float("inf")), 1),
+        (TransferModel(1, 0), True),
+    ],
+)
+def test_transfer_model_rejects_invalid_numbers(model: TransferModel, size_bytes: int) -> None:
+    with pytest.raises(ValueError, match="finite number|positive integer"):
+        model.predict_ms(size_bytes)
 
 
 def test_affine_fit_rejects_duplicate_sizes() -> None:
@@ -148,6 +165,43 @@ def test_attention_samples_are_selected_by_split() -> None:
     assert attention_samples_from_payload(payload, "validation") == (attention_sample(256, 2, 3),)
 
 
-def test_invalid_attention_shape_is_rejected() -> None:
-    with pytest.raises(ValueError, match="positive"):
-        AttentionShape(1, 0, 64, 2).validate()
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_invalid_attention_shape_is_rejected(value: object) -> None:
+    with pytest.raises(ValueError, match="positive integers"):
+        AttentionShape(1, value, 64, 2).validate()  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_attention_shape_rejects_invalid_context_tokens(value: object) -> None:
+    shape = AttentionShape(1, 1, 1, 1)
+    for operation in (shape.flops, shape.modeled_bytes):
+        with pytest.raises(ValueError, match="positive integer"):
+            operation(value)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        AttentionSample(True, 1, 1),
+        AttentionSample(1, float("nan"), 1),
+        AttentionSample(1, 1, float("inf")),
+    ],
+)
+def test_invalid_attention_samples_are_rejected(invalid: AttentionSample) -> None:
+    with pytest.raises(ValueError, match="positive integer|positive finite numbers"):
+        invalid.validate()
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        AttentionRooflineModel(float("nan"), 1, 0),
+        AttentionRooflineModel(1, float("inf"), 0),
+        AttentionRooflineModel(1, 1, float("nan")),
+    ],
+)
+def test_invalid_attention_roofline_models_are_rejected(
+    model: AttentionRooflineModel,
+) -> None:
+    with pytest.raises(ValueError, match="finite number"):
+        model.validate()

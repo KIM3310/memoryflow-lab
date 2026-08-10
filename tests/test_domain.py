@@ -65,6 +65,18 @@ def test_workload_rejects_non_positive_values(field: str) -> None:
         sample_workload(**{field: 0}).validate()
 
 
+@pytest.mark.parametrize("value", [1.5, True])
+def test_workload_rejects_non_integer_dimensions(value: object) -> None:
+    with pytest.raises(ValueError, match="positive integers"):
+        sample_workload(layers=value).validate()
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), 10**1000, True])
+def test_workload_rejects_invalid_parameter_counts(value: object) -> None:
+    with pytest.raises(ValueError, match="positive finite number"):
+        sample_workload(parameter_count_b=value).validate()
+
+
 def test_workload_rejects_more_kv_heads_than_attention_heads() -> None:
     with pytest.raises(ValueError, match="cannot exceed"):
         sample_workload(kv_heads=64).validate()
@@ -90,13 +102,34 @@ def test_system_rejects_zero_bandwidth() -> None:
         sample_system(remote_bandwidth_gbps=0).validate()
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), 10**1000, True])
+def test_system_rejects_invalid_numeric_values(value: object) -> None:
+    with pytest.raises(ValueError, match="positive finite numbers"):
+        sample_system(remote_bandwidth_gbps=value).validate()
+
+
 def test_policy_rejects_invalid_overlap() -> None:
     policy = PlacementPolicy("bad", "sliding_window", 1024, transfer_overlap_ratio=1.1)
     with pytest.raises(ValueError, match="between 0 and 1"):
         policy.validate()
 
 
-def test_policy_rejects_invalid_window() -> None:
-    policy = PlacementPolicy("bad", "sliding_window", 0)
-    with pytest.raises(ValueError, match="positive"):
+@pytest.mark.parametrize("field", ["transfer_overlap_ratio", "near_memory_reduction_ratio"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), True])
+def test_policy_rejects_non_finite_or_boolean_ratios(field: str, value: object) -> None:
+    overrides = {field: value}
+    policy = PlacementPolicy(
+        "bad",
+        "sliding_window",
+        1024,
+        **overrides,  # type: ignore[arg-type]
+    )
+    with pytest.raises(ValueError, match="finite number"):
+        policy.validate()
+
+
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_policy_rejects_invalid_window(value: object) -> None:
+    policy = PlacementPolicy("bad", "sliding_window", value)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="positive integer"):
         policy.validate()

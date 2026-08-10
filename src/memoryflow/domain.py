@@ -1,9 +1,23 @@
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, cast
 
 GIB = 1024**3
+
+
+def _is_finite_number(value: object) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def _is_positive_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _stable_numbers(value: Any) -> Any:
@@ -32,8 +46,10 @@ class Workload:
     concurrent_sequences: int
 
     def validate(self) -> None:
-        positive = {
-            "parameter_count_b": self.parameter_count_b,
+        if not _is_finite_number(self.parameter_count_b) or self.parameter_count_b <= 0:
+            raise ValueError("parameter_count_b must be a positive finite number")
+
+        positive_integers = {
             "layers": self.layers,
             "hidden_size": self.hidden_size,
             "attention_heads": self.attention_heads,
@@ -45,9 +61,11 @@ class Workload:
             "generated_tokens": self.generated_tokens,
             "concurrent_sequences": self.concurrent_sequences,
         }
-        invalid = [name for name, value in positive.items() if value <= 0]
+        invalid = [
+            name for name, value in positive_integers.items() if not _is_positive_integer(value)
+        ]
         if invalid:
-            raise ValueError(f"workload values must be positive: {', '.join(invalid)}")
+            raise ValueError(f"workload values must be positive integers: {', '.join(invalid)}")
         if self.kv_heads > self.attention_heads:
             raise ValueError("kv_heads cannot exceed attention_heads")
         if self.attention_heads % self.kv_heads != 0:
@@ -88,10 +106,23 @@ class MemorySystem:
     compute_energy_pj_per_flop: float = 0.35
 
     def validate(self) -> None:
-        values = asdict(self)
-        invalid = [name for name, value in values.items() if name != "name" and value <= 0]
+        values = {
+            "hbm_capacity_gib": self.hbm_capacity_gib,
+            "hbm_bandwidth_gbps": self.hbm_bandwidth_gbps,
+            "remote_capacity_gib": self.remote_capacity_gib,
+            "remote_bandwidth_gbps": self.remote_bandwidth_gbps,
+            "remote_base_latency_us": self.remote_base_latency_us,
+            "accelerator_tops": self.accelerator_tops,
+            "near_memory_tops": self.near_memory_tops,
+            "hbm_energy_pj_per_byte": self.hbm_energy_pj_per_byte,
+            "remote_energy_pj_per_byte": self.remote_energy_pj_per_byte,
+            "compute_energy_pj_per_flop": self.compute_energy_pj_per_flop,
+        }
+        invalid = [
+            name for name, value in values.items() if not _is_finite_number(value) or value <= 0
+        ]
         if invalid:
-            raise ValueError(f"system values must be positive: {', '.join(invalid)}")
+            raise ValueError(f"system values must be positive finite numbers: {', '.join(invalid)}")
 
     @property
     def hbm_capacity_bytes(self) -> float:
@@ -116,12 +147,18 @@ class PlacementPolicy:
     def validate(self) -> None:
         if self.kind not in {"hbm_only", "sliding_window", "near_memory"}:
             raise ValueError(f"unsupported policy kind: {self.kind}")
-        if self.hbm_window_tokens <= 0:
-            raise ValueError("hbm_window_tokens must be positive")
-        if not 0 <= self.transfer_overlap_ratio <= 1:
-            raise ValueError("transfer_overlap_ratio must be between 0 and 1")
-        if not 0 <= self.near_memory_reduction_ratio < 1:
-            raise ValueError("near_memory_reduction_ratio must be in [0, 1)")
+        if not _is_positive_integer(self.hbm_window_tokens):
+            raise ValueError("hbm_window_tokens must be a positive integer")
+        if (
+            not _is_finite_number(self.transfer_overlap_ratio)
+            or not 0 <= self.transfer_overlap_ratio <= 1
+        ):
+            raise ValueError("transfer_overlap_ratio must be a finite number between 0 and 1")
+        if (
+            not _is_finite_number(self.near_memory_reduction_ratio)
+            or not 0 <= self.near_memory_reduction_ratio < 1
+        ):
+            raise ValueError("near_memory_reduction_ratio must be a finite number in [0, 1)")
 
 
 @dataclass(frozen=True)

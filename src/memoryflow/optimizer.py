@@ -21,13 +21,37 @@ def pareto_front(results: list[SimulationResult]) -> list[SimulationResult]:
         )
         if not dominated:
             frontier.append(candidate)
-    return sorted(frontier, key=lambda item: (item.mean_decode_latency_ms, item.estimated_energy_j))
+    return sorted(
+        frontier,
+        key=lambda item: (
+            item.mean_decode_latency_ms,
+            item.estimated_energy_j,
+            item.policy_name,
+        ),
+    )
+
+
+def _validate_windows(windows: tuple[int, ...], page_tokens: int) -> None:
+    if not windows:
+        raise ValueError("windows must contain at least one token count")
+    if len(set(windows)) != len(windows):
+        raise ValueError("window token counts must be unique")
+    if any(
+        isinstance(window, bool)
+        or not isinstance(window, int)
+        or window <= 0
+        or window % page_tokens != 0
+        for window in windows
+    ):
+        raise ValueError("windows must be positive integers divisible by kv_page_tokens")
 
 
 def sweep_hbm_windows(
     request: SimulationRequest,
     windows: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096),
 ) -> list[SimulationResult]:
+    request.validate()
+    _validate_windows(windows, request.policy.kv_page_tokens)
     results: list[SimulationResult] = []
     for kind in ("sliding_window", "near_memory"):
         for window in windows:
@@ -35,8 +59,9 @@ def sweep_hbm_windows(
                 name=f"{kind}-{window}",
                 kind=kind,
                 hbm_window_tokens=window,
+                kv_page_tokens=request.policy.kv_page_tokens,
                 transfer_overlap_ratio=request.policy.transfer_overlap_ratio,
-                near_memory_reduction_ratio=request.policy.near_memory_reduction_ratio,
+                near_memory_accumulator_bits=request.policy.near_memory_accumulator_bits,
             )
             results.append(simulate(replace(request, policy=policy)))
     return results

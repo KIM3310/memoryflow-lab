@@ -1,4 +1,10 @@
 {
+  "schema_version": "2.0",
+  "provenance": {
+    "hardware_profile": "synthetic",
+    "source": "MemoryFlow Lab illustrative design point; design knobs are not vendor specifications.",
+    "measurement_scope": "none"
+  },
   "workload": {
     "name": "7B GQA long-context decode",
     "parameter_count_b": 7.0,
@@ -9,25 +15,40 @@
     "head_dim": 128,
     "weight_bits": 16,
     "kv_bits": 16,
+    "activation_bits": 16,
     "context_tokens": 8192,
     "generated_tokens": 64,
     "concurrent_sequences": 16
   },
   "system": {
     "name": "Synthetic accelerator A - slow near-memory stress",
-    "hbm_capacity_gib": 24,
-    "hbm_bandwidth_gbps": 900,
-    "remote_capacity_gib": 256,
-    "remote_bandwidth_gbps": 64,
-    "remote_base_latency_us": 4,
-    "accelerator_tops": 120,
-    "near_memory_tops": 0.1
+    "hbm_capacity_gib": 24.0,
+    "hbm_bandwidth_gbps": 900.0,
+    "remote_capacity_gib": 256.0,
+    "remote_bandwidth_gbps": 64.0,
+    "remote_memory_bandwidth_gbps": 128.0,
+    "remote_base_latency_us": 4.0,
+    "accelerator_tops": 120.0,
+    "near_memory_tops": 0.1,
+    "hbm_reserved_gib": 2.0,
+    "hbm_bandwidth_efficiency": 0.75,
+    "remote_bandwidth_efficiency": 0.7,
+    "remote_memory_bandwidth_efficiency": 0.7,
+    "accelerator_compute_efficiency": 0.55,
+    "near_memory_compute_efficiency": 0.6,
+    "remote_protocol_overhead_ratio": 0.05,
+    "hbm_energy_pj_per_byte": 3.0,
+    "remote_memory_energy_pj_per_byte": 12.0,
+    "remote_link_energy_pj_per_byte": 8.0,
+    "accelerator_compute_energy_pj_per_flop": 0.35,
+    "near_memory_compute_energy_pj_per_flop": 0.2
   },
   "policy": {
     "name": "Near-memory stress 0.1 TOPS",
     "kind": "near_memory",
     "hbm_window_tokens": 1024,
+    "kv_page_tokens": 16,
     "transfer_overlap_ratio": 0.35,
-    "near_memory_reduction_ratio": 0.90
+    "near_memory_accumulator_bits": 32
   }
 }

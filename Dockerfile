@@ -9,6 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
+COPY site ./site
 RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels .
 
 FROM ${PYTHON_IMAGE} AS runtime

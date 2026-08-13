@@ -30,7 +30,7 @@ MemoryFlow's container is a reproducible review surface for the analytical model
 4. Confirm the process UID is `10001`.
 5. Confirm the dashboard is served.
 6. Submit the checked-in 7B tiered-memory scenario.
-7. Require a feasible result, 64 decode steps, and the expected transfer bottleneck.
+7. Require result schema `2.0`, feasibility, 64 decode steps, nonzero remote-media/link traffic, and the expected `remote_link` bottleneck.
 8. Require Docker's image health status to become `healthy`.
 
 The local Apple Silicon run validates `linux/arm64`. GitHub Actions repeats the same contract on an `amd64` Linux runner.

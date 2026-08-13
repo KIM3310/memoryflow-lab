@@ -1,4 +1,12 @@
 {
+  "aggregation": {
+    "level": "summary_statistics",
+    "raw_iterations_included": false,
+    "reported_statistics": [
+      "median_ms",
+      "p95_ms"
+    ]
+  },
   "environment": {
     "device_backend": "mps",
     "device_label": "Apple M4 (10-core GPU)",
@@ -191,10 +199,10 @@
       "split": "validation"
     }
   ],
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "scope": {
     "measured": "single-layer PyTorch scaled dot-product decode attention",
-    "not_measured": "model weights, multi-layer execution, KV allocation/paging, HBM, CXL, remote memory, or end-to-end serving",
+    "not_measured": "model weights, multi-layer execution, KV allocation/paging, HBM, CXL, remote memory, near-memory/PIM, or end-to-end serving",
     "use": "compare independent roofline inputs and attention-calibrated analytical predictions on held-out context lengths"
   }
 }

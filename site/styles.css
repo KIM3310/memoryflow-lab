@@ -71,7 +71,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 24px 72px; }
 .workload-facts dt { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
 .workload-facts dd { font-size: 17px; font-weight: 750; margin: 0; }
 
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+.metrics { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); }
 .metrics article { padding: 28px 22px 30px; border-right: 1px solid var(--line); min-width: 0; }
 .metrics article:first-child { padding-left: 0; }
 .metrics article:last-child { border-right: 0; }
@@ -108,7 +108,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 24px 72px; }
 .measurement-device { color: var(--muted); font-size: 12px; text-align: right; }
 .measurement-subheading { margin: 42px 0 20px; }
 .measurement-subheading h3 { margin: 0; font-size: 21px; }
-.measurement-metrics { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); margin-bottom: 24px; }
+.measurement-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border: 1px solid var(--line); margin-bottom: 24px; }
 .measurement-metrics article { padding: 22px; border-right: 1px solid var(--line); min-width: 0; }
 .measurement-metrics article:last-child { border-right: 0; }
 .measurement-metrics span, .measurement-metrics small { color: var(--muted); display: block; }
@@ -124,6 +124,8 @@ th { background: var(--surface); color: var(--muted); font-weight: 750; }
 tbody tr:last-child td { border-bottom: 0; }
 .yes { color: var(--forest); font-weight: 800; }
 .no { color: var(--danger); font-weight: 800; }
+.provenance-list { color: var(--muted); font-size: 12px; line-height: 1.7; padding-left: 20px; }
+.provenance-list code { color: var(--ink); }
 .disclaimer { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 16px 0 0; }
 
 footer { max-width: 1200px; margin: 0 auto; padding: 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 24px; color: var(--muted); font-size: 12px; }

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memoryflow-lab"
-version = "0.2.0"
+version = "0.3.0"
 description = "A reproducible LLM KV-cache memory co-design simulator"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2,<2",
   "httpx>=0.27,<1",
   "mypy>=1.11,<3",
   "pytest>=9.0.3,<10",
@@ -33,6 +34,9 @@ memoryflow = "memoryflow.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/memoryflow"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"site" = "memoryflow/site"
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --disable-warnings"

@@ -22,7 +22,7 @@
       </div>
       <div class="status" aria-label="Model boundary">
         <span class="status-dot"></span>
-        Synthetic model + measured equation check
+        Synthetic scenarios + separate MPS aggregate check
       </div>
     </header>
 
@@ -32,8 +32,8 @@
           <p class="section-label">Decision under test</p>
           <h2 id="decision-title">Where should long-context KV cache live?</h2>
           <p>
-            Compare HBM-only placement, remote-memory tiering, and a near-memory proxy under the
-            same 7B GQA decode workload. Every result is generated from versioned inputs.
+            Compare HBM-only placement, a page-aware remote tier, and near-memory partial-state
+            attention under one synthetic 7B GQA workload. Every result comes from versioned inputs.
           </p>
         </div>
         <dl class="workload-facts" id="workload-facts">
@@ -61,9 +61,14 @@
           <small>batched tokens per second</small>
         </article>
         <article>
-          <span>Remote traffic</span>
-          <strong id="metric-traffic">-</strong>
-          <small>GiB across the generated sequence</small>
+          <span>Remote-media reads</span>
+          <strong id="metric-media">-</strong>
+          <small>page-rounded GiB across decode</small>
+        </article>
+        <article>
+          <span>Interconnect reads</span>
+          <strong id="metric-link">-</strong>
+          <small>payload + protocol GiB across decode</small>
         </article>
       </section>
 
@@ -72,7 +77,7 @@
           <div class="section-heading">
             <div>
               <p class="section-label">Policy comparison</p>
-              <h2>Three hypotheses, one falsification</h2>
+              <h2>Four scenarios, distinct service paths</h2>
             </div>
             <div class="segmented" id="policy-selector" role="tablist" aria-label="Placement policy"></div>
           </div>
@@ -83,21 +88,60 @@
           <p class="section-label">Model result</p>
           <h2 id="verdict-title">Capacity first, then movement</h2>
           <ol>
-            <li><strong>Reject</strong> any layout that cannot fit weights plus resident KV.</li>
-            <li><strong>Measure</strong> exposed remote transfer after overlap, not bandwidth alone.</li>
-            <li><strong>Offload selectively</strong> only when reduced movement beats added complexity.</li>
+            <li><strong>Reserve first:</strong> weights, runtime reserve, and page allocations must fit.</li>
+            <li><strong>Separate paths:</strong> remote-media scans and interconnect traffic are not interchangeable.</li>
+            <li><strong>Offload conditionally:</strong> partial-state traffic helps only if near-memory compute keeps up.</li>
           </ol>
         </aside>
+      </section>
+
+      <section class="measurement" aria-labelledby="design-space-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">Deterministic sensitivity</p>
+            <h2 id="design-space-title">Break-even and counterexample, not a universal win</h2>
+          </div>
+        </div>
+        <div class="measurement-metrics">
+          <article>
+            <span>64 GB/s link break-even</span>
+            <strong id="break-even-value">-</strong>
+            <small>synthetic peak near-memory throughput</small>
+          </article>
+          <article>
+            <span>One-at-a-time speedup range</span>
+            <strong id="sensitivity-range">-</strong>
+            <small>declared input multipliers only</small>
+          </article>
+          <article>
+            <span>Compute counterexample</span>
+            <strong id="counterexample-value">-</strong>
+            <small id="counterexample-note">winner loading</small>
+          </article>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Peak link bandwidth</th><th>Break-even peak compute</th><th>Status</th></tr>
+            </thead>
+            <tbody id="break-even-table"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer" id="uncertainty-boundary"></p>
       </section>
 
       <section class="measurement" aria-labelledby="measurement-title">
         <div class="section-heading">
           <div>
-            <p class="section-label">PyTorch GPU measurement</p>
-            <h2 id="measurement-title">Decode attention: roofline vs kernel calibration</h2>
+            <p class="section-label">Separate PyTorch MPS aggregate</p>
+            <h2 id="measurement-title">Decode attention: equation check, not system validation</h2>
           </div>
           <span class="measurement-device" id="measurement-device">Loading device metadata</span>
         </div>
+        <p class="disclaimer">
+          Apple M4/MPS median and p95 summaries only; no raw iterations. This is not CUDA,
+          HBM/CXL, near-memory/PIM, or end-to-end validation and does not calibrate the synthetic profile.
+        </p>
         <div class="measurement-metrics">
           <article>
             <span>Independent roofline MAPE</span>
@@ -195,13 +239,17 @@
                 <th>Feasible</th>
                 <th>Mean decode</th>
                 <th>Throughput</th>
-                <th>Remote read</th>
+                <th>Remote-media read</th>
+                <th>Interconnect read</th>
+                <th>Page read amp.</th>
                 <th>Bottleneck</th>
               </tr>
             </thead>
             <tbody id="results-table"></tbody>
           </table>
         </div>
+        <h3>Exact input provenance</h3>
+        <ul class="provenance-list" id="provenance-list"></ul>
         <p class="disclaimer" id="disclaimer"></p>
       </section>
     </main>

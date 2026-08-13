@@ -77,7 +77,10 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["feasible"] is True, payload
 assert len(payload["steps"]) == 64, len(payload["steps"])
-assert payload["bottleneck"] == "remote_transfer", payload["bottleneck"]
+assert payload["schema_version"] == "2.0", payload["schema_version"]
+assert payload["bottleneck"] == "remote_link", payload["bottleneck"]
+assert payload["total_remote_memory_read_gib"] > 0, payload
+assert payload["total_interconnect_read_gib"] > 0, payload
 PY
 
 for attempt in $(seq 1 15); do

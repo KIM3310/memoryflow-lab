@@ -32,16 +32,25 @@ jobs:
           ruff format --check .
 
       - name: Type check
-        run: mypy src
+        run: mypy src scripts
 
       - name: Test
         run: pytest --cov=memoryflow --cov-report=term-missing --cov-fail-under=90
 
       - name: Reproduce evidence
         run: |
-          python -m scripts.build_evidence > /tmp/memoryflow-evidence.json
+          python -m scripts.build_evidence --check
+          cp site/results.json /tmp/results.json
+          cp evidence/benchmark-summary.md /tmp/benchmark-summary.md
+          python -m scripts.build_evidence >/dev/null
+          cmp site/results.json /tmp/results.json
+          cmp evidence/benchmark-summary.md /tmp/benchmark-summary.md
           python -m scripts.build_measurement_summary --check
-          git diff --exit-code -- site/results.json evidence/benchmark-summary.md
+          python -m scripts.validate_site
+          tmp=$(mktemp -d)
+          python -m build --outdir "$tmp"
+          python -m scripts.validate_distribution "$tmp"
+          rm -rf "$tmp"
 
   container:
     runs-on: ubuntu-latest

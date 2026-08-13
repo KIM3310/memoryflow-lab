@@ -172,6 +172,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError("calibration contexts must be unique")
     if len(set(validation_contexts)) != len(validation_contexts):
         raise ValueError("validation contexts must be unique")
+    copy_calibration_mib = tuple(args.copy_calibration_mib)
+    if len(set(copy_calibration_mib)) != len(copy_calibration_mib):
+        raise ValueError("copy calibration sizes must be unique")
 
     torch = importlib.import_module("torch")
     functional = importlib.import_module("torch.nn.functional")
@@ -188,12 +191,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         torch,
         device,
         args.dtype,
-        tuple(args.copy_calibration_mib),
+        copy_calibration_mib,
         args.warmup,
         args.repeats,
         args.seed,
     )
-    copy_samples = tuple(copy_samples_by_size[size * 1024**2] for size in args.copy_calibration_mib)
+    copy_samples = tuple(copy_samples_by_size[size * 1024**2] for size in copy_calibration_mib)
     copy_model = fit_affine_transfer_model(copy_samples)
     gemm = _measure_gemm(
         torch,
@@ -249,7 +252,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ]
 
     payload: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "kind": "pytorch-sdpa-decode-attention",
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "environment": {
@@ -268,7 +271,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "query_tokens": 1,
             "calibration_contexts": list(calibration_contexts),
             "validation_contexts": list(validation_contexts),
-            "copy_calibration_sizes_mib": list(args.copy_calibration_mib),
+            "copy_calibration_sizes_mib": list(copy_calibration_mib),
             "gemm_size": args.gemm_size,
             "warmup_iterations": args.warmup,
             "measured_iterations_per_context": args.repeats,
@@ -279,11 +282,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "before and after"
             ),
         },
+        "aggregation": {
+            "level": "summary_statistics",
+            "raw_iterations_included": False,
+            "reported_statistics": ["median_ms", "p95_ms"],
+        },
         "scope": {
             "measured": "single-layer PyTorch scaled dot-product decode attention",
             "not_measured": (
                 "model weights, multi-layer execution, KV allocation/paging, HBM, CXL, "
-                "remote memory, or end-to-end serving"
+                "remote memory, near-memory/PIM, or end-to-end serving"
             ),
             "use": (
                 "compare independent roofline inputs and attention-calibrated analytical "

@@ -2,63 +2,60 @@
 
 ## Question
 
-For a long-context, batched 7B GQA decode workload on a capacity-constrained accelerator, which KV placement policy is worth carrying forward?
+Can remote KV placement make a synthetic long-context decode configuration feasible, and under what modeled conditions does near-memory partial-state attention beat returning cold KV over the link?
 
-## Hypothesis 1: HBM-only is simplest and therefore best
+All four bundled profiles explicitly declare `hardware_profile: synthetic` and `measurement_scope: none`. Their knobs are not inferred from Apple M4 data or vendor specifications.
 
-**Prediction:** keeping all KV in HBM avoids remote latency.
+## H1 — HBM-only capacity
 
-**Test:** account for FP16 weights and the full KV footprint before calculating speed.
+**Input:** 7B FP16 weights, FP16 GQA KV, 8,192 prompt tokens, 64 generated tokens, 16 synchronized sequences, 24 GiB HBM, 2 GiB reserve, 16-token KV pages.
 
-**Result:** rejected. The layout is not feasible under the bundled capacity constraint. Performance is irrelevant after a capacity failure.
+**Test:** page-allocate the post-final-write KV at length 8,256 and admit reserve, weights, and hot KV.
 
-## Hypothesis 2: Remote tiering solves the problem
+**Result:** rejected. The runtime reserve plus weights and full page-allocated KV exceed HBM.
 
-**Prediction:** keeping the newest 1,024 tokens in HBM and spilling cold KV restores feasibility.
+**Decision:** any performance number for this placement would be misleading, so the result remains an explicit capacity failure.
 
-**Test:** model all cold-KV bytes read during each attention step and expose the non-overlapped transfer time.
+## H2 — Remote sliding window
 
-**Result:** capacity is restored, but remote movement becomes the dominant component. The idea solves one constraint while creating another.
+**Change:** keep only 1,024 tokens per sequence in HBM; place older pages in the remote tier.
 
-## Hypothesis 3: Move the operation, not all the data
+**Result:** feasible. Across decode, the cold scan reads about 900.88 GiB from remote media and about 945.92 GiB from the interconnect after the 5% protocol factor. The modeled link is the most frequent bottleneck.
 
-**Prediction:** a near-memory proxy that reduces cold-KV transfer by 90% beats naive tiering in this case.
+**Decision:** capacity relief does not imply adequate latency; media and link service must be evaluated separately.
 
-**Test:** keep capacity and workload inputs identical; change only the transferred fraction.
+## H3 — Near-memory partial-state attention
 
-**Result:** accepted provisionally. The proxy reduces remote traffic and latency in this scenario.
+**Change:** preserve the same placement and media pages, but send per-layer queries to remote compute and return `(output, row_max, row_sum)` per query head.
 
-## Falsification: near-memory compute is too slow
+**Result:** feasible. Remote-media reads remain about 900.88 GiB, while remote-to-accelerator partial-state link reads are about 0.53 GiB. With the synthetic 12 TOPS peak / 60% efficiency knob, remote media becomes limiting and mean decode latency is lower than ordinary tiering.
 
-**Prediction:** lowering near-memory throughput far enough must erase the movement benefit.
+**Decision:** near-memory reduces **link** movement, not remote-media scanning. The win is conditional on compute, media, link, fixed latency, overlap, page size, and precision.
 
-**Test:** reduce only `near_memory_tops` from 12 to 0.1 while preserving workload, capacity, bandwidth, placement window, and reduction ratio.
+## H4 — Counterexample
 
-**Result:** the winner reverses and `near_memory_compute` becomes the bottleneck. The simulator can therefore reject the favored architecture instead of encoding a fixed conclusion.
+**Change:** reduce only peak near-memory throughput to 0.1 TOPS in the committed stress scenario. Workload, pages, capacities, link/media rates, efficiencies other than near-memory compute, and placement remain fixed.
 
-## Measurement check: does an independent roofline predict decode attention?
+**Result:** feasible but slower than ordinary tiering; near-memory compute is the bottleneck.
 
-**Prediction:** copy bandwidth and GEMM throughput alone will not fully explain fused attention latency because kernel dispatch, softmax, and kernel-specific utilization are absent from those microbenchmarks.
+**Decision:** reject the universal claim “near-memory always wins.” The analysis also computes the conditional break-even and constructs a deterministic point below it.
 
-**Test:** run PyTorch SDPA with one query token, batch 1, 8 heads, head dimension 64, and FP16 KV. Fit no attention parameters for the independent roofline. Separately fit an affine attention model on contexts 256, 1,024, and 4,096, then validate both models on 512, 2,048, and 8,192 tokens.
+## Sensitivity and break-even
 
-**Result:** the independent roofline produced 37.46% validation MAPE. The attention-calibrated model produced 4.72% MAPE with 9.66% maximum error. Kernel-specific calibration is therefore required before using the analytical latency as a numerical prediction.
+The generated analysis evaluates four peak link bandwidths, seven peak near-memory throughputs, twelve one-at-a-time input axes, and five declared multipliers. A monotone geometric bisection locates the peak near-memory TOPS where the two policies tie. The exact thresholds are regenerated in [`evidence/benchmark-summary.md`](../evidence/benchmark-summary.md).
 
-## Measurement check: does bandwidth alone explain transfer time?
+This sweep is not sampling and its min/max is not a confidence interval. It answers “what does this equation do under these declared perturbations?” rather than “how likely is this outcome on hardware?”
 
-**Prediction:** a `bytes / bandwidth` equation fitted at a large transfer will under-predict smaller synchronized transfers because dispatch and synchronization introduce a fixed term.
+## Separate MPS equation checks
 
-**Test:** on Apple M4 MPS, use PyTorch `copy_` for 1, 4, 8, 16, 32, and 64 MiB device tensors. Fit on 4, 16, and 64 MiB, then validate on the held-out 1, 8, and 32 MiB sizes.
+Committed Apple M4 MPS artifacts contain median/p95 aggregate summaries, not timing iterations. Held-out sizes/contexts check transfer and one-layer attention equation shapes. They do not exercise the scenario's HBM reserve, page allocator, CXL/remote paths, PIM, multi-layer decode, CUDA, energy, or end-to-end serving. No MPS fitted value is used above.
 
-**Result:** bandwidth-only validation MAPE was 53.21%. An affine `base latency + bytes / bandwidth` fit reduced MAPE to 8.52%. The run supports the equation shape used for remote service, but does not calibrate the synthetic system profile.
+## Reproduction
 
-## Why the conclusion is provisional
+```bash
+make verify
+.venv/bin/memoryflow simulate scenarios/7b-long-context-tiered.json --steps
+.venv/bin/memoryflow analyze scenarios/7b-long-context-tiered.json
+```
 
-The near-memory path includes a throughput parameter, but not bank conflicts, compiler lowering, synchronization detail, thermal behavior, or hardware counters. The SDPA run is one layer with preallocated KV; it does not include model weights, KV paging, multi-layer execution, or serving. The next validation step is a CUDA/HBM end-to-end decode trace and memory-system calibration, not another policy or interface.
-
-## Decision record
-
-- Carry near-memory placement forward as the candidate architecture.
-- Keep naive tiering as the operational fallback and comparison baseline.
-- Reject HBM-only for this capacity point.
-- Re-run the sweep whenever workload shape or memory-system assumptions change.
+`make verify` confirms exact input/source hashes, deterministic generated files, schema boundaries, static analysis, and test coverage.

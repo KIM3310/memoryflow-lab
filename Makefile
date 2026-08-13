@@ -2,7 +2,7 @@ PYTHON ?= python3
 VENV ?= .venv
 BIN := $(VENV)/bin
 
-.PHONY: install install-measure test lint typecheck verify benchmark measurement-check measure measure-copy measure-attention profile-cuda run docker-build docker-verify docker-up docker-down verify-all
+.PHONY: install install-measure test lint typecheck verify benchmark benchmark-determinism measurement-check site-check package-check measure measure-copy measure-attention profile-cuda run docker-build docker-verify docker-up docker-down verify-all
 
 install:
 	$(PYTHON) -m venv $(VENV)
@@ -20,18 +20,33 @@ lint:
 	$(BIN)/ruff format --check .
 
 typecheck:
-	$(BIN)/mypy src
+	$(BIN)/mypy src scripts
 
-verify: lint typecheck test benchmark measurement-check
+verify: lint typecheck test benchmark benchmark-determinism measurement-check site-check package-check
 
 verify-all: verify docker-verify
 
 benchmark:
-	$(BIN)/python -m scripts.build_evidence
-	git diff --exit-code -- site/results.json evidence/benchmark-summary.md
+	$(BIN)/python -m scripts.build_evidence --check
+
+benchmark-determinism:
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+		cp site/results.json "$$tmp/results.json"; \
+		cp evidence/benchmark-summary.md "$$tmp/benchmark-summary.md"; \
+		$(BIN)/python -m scripts.build_evidence >/dev/null; \
+		cmp -s site/results.json "$$tmp/results.json"; \
+		cmp -s evidence/benchmark-summary.md "$$tmp/benchmark-summary.md"
 
 measurement-check:
 	$(BIN)/python -m scripts.build_measurement_summary --check
+
+site-check:
+	$(BIN)/python -m scripts.validate_site
+
+package-check:
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+		$(BIN)/python -m build --outdir "$$tmp" >/dev/null; \
+		$(BIN)/python -m scripts.validate_distribution "$$tmp"
 
 measure: measure-copy measure-attention
 

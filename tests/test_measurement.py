@@ -17,6 +17,7 @@ from memoryflow.measurement import (
     fit_attention_affine_model,
     samples_from_payload,
 )
+from scripts.measure_attention import main as measure_attention_main
 
 
 def sample(size_bytes: int, median_ms: float, p95_ms: float | None = None) -> TransferSample:
@@ -205,3 +206,8 @@ def test_invalid_attention_roofline_models_are_rejected(
 ) -> None:
     with pytest.raises(ValueError, match="finite number"):
         model.validate()
+
+
+def test_attention_measurement_cli_rejects_duplicate_copy_sizes_before_gpu_import() -> None:
+    with pytest.raises(ValueError, match="copy calibration sizes must be unique"):
+        measure_attention_main(["--copy-calibration-mib", "4,4,16"])

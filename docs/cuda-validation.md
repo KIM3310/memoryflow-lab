@@ -1,7 +1,8 @@
 # CUDA Validation Runbook
 
-This runbook produces local CUDA measurements and a PyTorch Profiler trace without
-overwriting the committed Apple M4 MPS references.
+No CUDA result is committed in this repository. This runbook describes a future/local CUDA
+measurement and PyTorch Profiler trace without overwriting the Apple M4 MPS references.
+Documentation of these commands is not evidence that they were executed.
 
 ## Requirements
 
@@ -57,7 +58,7 @@ Before treating a CUDA run as reference evidence:
 2. repeat the run in at least three fresh processes and compare medians;
 3. keep calibration and validation inputs disjoint;
 4. inspect the trace for compilation, allocation, or synchronization inside the timed region;
-5. retain raw JSON and the exact commands used;
+5. retain the aggregate JSON, exact commands, and separately secured raw iteration data if captured;
 6. state that one fused SDPA layer is not end-to-end LLM serving;
 7. do not label a CUDA device-copy result as CXL or remote-memory bandwidth.
 

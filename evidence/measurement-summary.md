@@ -1,4 +1,4 @@
-# PyTorch GPU Measurement Summary
+# PyTorch GPU Aggregate Measurement Summary
 
 ## Environment
 
@@ -55,4 +55,4 @@ Calibration uses 4, 16, 64 MiB transfers. Validation uses separate 1, 8, 32 MiB 
 
 ## Boundary
 
-The attention run measures one fused PyTorch SDPA layer with preallocated KV tensors. It excludes model weights, multi-layer execution, KV allocation and paging, HBM, CXL, remote memory, and serving orchestration. The copy run validates the fixed-latency transfer equation on the recorded GPU backend. Neither result is a named-product performance claim.
+The Apple M4 (10-core GPU) MPS artifacts contain median/p95 aggregate summaries, not raw iterations. The attention run measures one fused PyTorch SDPA layer with preallocated KV tensors; its declared exclusions are: model weights, multi-layer execution, KV allocation/paging, HBM, CXL, remote memory, near-memory/PIM, or end-to-end serving. The copy run checks the fixed-latency transfer equation shape on MPS; its declared exclusions are: HBM, CXL, remote memory, near-memory/PIM, LLM end-to-end latency, or vendor products. These artifacts do not provide measurements for CUDA or other backends. Neither artifact calibrates the synthetic scenarios or supports a named-product claim.

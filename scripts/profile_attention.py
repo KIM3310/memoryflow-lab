@@ -31,6 +31,8 @@ def _event_metric(event: Any, preferred: str, legacy: str) -> float:
     value = getattr(event, preferred, None)
     if value is None:
         value = getattr(event, legacy, 0.0)
+    if not isinstance(value, (int, float)):
+        return 0.0
     return float(value)
 
 

@@ -89,7 +89,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     payload: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "kind": "pytorch-synchronized-device-copy",
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "environment": {
@@ -111,9 +111,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "calibration_sizes_mib": list(args.calibration_mib),
             "validation_sizes_mib": list(args.validation_mib),
         },
+        "aggregation": {
+            "level": "summary_statistics",
+            "raw_iterations_included": False,
+            "reported_statistics": ["median_ms", "p95_ms"],
+        },
         "scope": {
             "measured": "PyTorch device-to-device tensor copy latency",
-            "not_measured": "HBM, CXL, remote memory, LLM end-to-end latency, or vendor products",
+            "not_measured": "HBM, CXL, remote memory, near-memory/PIM, LLM end-to-end latency, "
+            "or vendor products",
             "use": "validate the bytes/bandwidth plus fixed-latency equation shape",
         },
         "samples": samples,

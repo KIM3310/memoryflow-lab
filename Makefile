@@ -2,9 +2,15 @@ PYTHON ?= python3
 VENV ?= .venv
 BIN := $(VENV)/bin
 
-.PHONY: install install-measure test lint typecheck verify benchmark benchmark-determinism measurement-check site-check package-check measure measure-copy measure-attention profile-cuda run docker-build docker-verify docker-up docker-down verify-all
+.PHONY: check-python install install-measure test lint typecheck verify benchmark benchmark-determinism measurement-check site-check package-check measure measure-copy measure-attention profile-cuda run docker-build docker-verify docker-up docker-down verify-all
 
-install:
+check-python:
+	@$(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1 || { \
+		echo "Python 3.11+ is required. Set PYTHON=/path/to/python3.11." >&2; \
+		exit 1; \
+	}
+
+install: check-python
 	$(PYTHON) -m venv $(VENV)
 	$(BIN)/python -m pip install --upgrade pip
 	$(BIN)/pip install -e ".[dev]"
